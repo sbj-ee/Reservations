@@ -52,6 +52,10 @@ main {
   padding: 0 1rem;
 }
 
+/* Wider content area for data-heavy pages (e.g. the admin users table),
+   applied to both the nav and main so the header stays aligned with the table. */
+body.wide nav, body.wide main { max-width: 1200px; }
+
 h1 { font-size: 1.6rem; }
 h2 { font-size: 1.2rem; margin-top: 2rem; }
 
