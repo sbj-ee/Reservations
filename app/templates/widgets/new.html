@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}New widget{% endblock %}
+{% block content %}
+  <h1>New widget</h1>
+  <form method="post" class="card">
+    <label>Name
+      <input name="name" value="{{ form.get('name', '') }}" required autofocus>
+    </label>
+    <label>Description
+      <textarea name="description" rows="3">{{ form.get('description', '') }}</textarea>
+    </label>
+    <button type="submit">Create</button>
+  </form>
+{% endblock %}

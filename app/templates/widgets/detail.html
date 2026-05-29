@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ widget['name'] }}{% endblock %}
+{% block content %}
+  <p><a href="{{ url_for('web.list_widgets') }}">&larr; All widgets</a></p>
+  <h1>{{ widget['name'] }}</h1>
+  {% if widget['description'] %}<p>{{ widget['description'] }}</p>{% endif %}
+
+  <h2>Reservations</h2>
+  {% if reservations %}
+    <table class="reservations">
+      <thead><tr><th>Start</th><th>End</th><th>By</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for r in reservations %}
+          <tr>
+            <td>{{ r['start_time'] }}</td>
+            <td>{{ r['end_time'] }}</td>
+            <td>{{ r['username'] }}</td>
+            <td>{{ r['note'] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No reservations yet.</p>
+  {% endif %}
+
+  {% if g.user %}
+    <h2>Reserve this widget</h2>
+    <form method="post" action="{{ url_for('web.reserve_widget', widget_id=widget['id']) }}" class="card">
+      <label>Start
+        <input type="datetime-local" name="start_time" required>
+      </label>
+      <label>End
+        <input type="datetime-local" name="end_time" required>
+      </label>
+      <label>Note (optional)
+        <input name="note">
+      </label>
+      <button type="submit">Reserve</button>
+    </form>
+  {% else %}
+    <p><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to reserve this widget.</p>
+  {% endif %}
+{% endblock %}

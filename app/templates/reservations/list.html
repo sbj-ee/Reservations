@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}My reservations{% endblock %}
+{% block content %}
+  <h1>My reservations</h1>
+  {% if reservations %}
+    <table class="reservations">
+      <thead><tr><th>Widget</th><th>Start</th><th>End</th><th>Note</th><th></th></tr></thead>
+      <tbody>
+        {% for r in reservations %}
+          <tr>
+            <td><a href="{{ url_for('web.widget_detail', widget_id=r['widget_id']) }}">{{ r['widget_name'] }}</a></td>
+            <td>{{ r['start_time'] }}</td>
+            <td>{{ r['end_time'] }}</td>
+            <td>{{ r['note'] }}</td>
+            <td>
+              <form method="post" action="{{ url_for('web.cancel_reservation', reservation_id=r['id']) }}"
+                    onsubmit="return confirm('Cancel this reservation?');">
+                <button type="submit" class="link-button">Cancel</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">You have no reservations. <a href="{{ url_for('web.list_widgets') }}">Browse widgets.</a></p>
+  {% endif %}
+{% endblock %}

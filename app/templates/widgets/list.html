@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Widgets{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <h1>Widgets</h1>
+    {% if g.user %}<a class="button" href="{{ url_for('web.new_widget') }}">New widget</a>{% endif %}
+  </div>
+  {% if widgets %}
+    <ul class="widget-list">
+      {% for w in widgets %}
+        <li>
+          <a class="widget-name" href="{{ url_for('web.widget_detail', widget_id=w['id']) }}">{{ w['name'] }}</a>
+          {% if w['description'] %}<p class="muted">{{ w['description'] }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No widgets yet.{% if g.user %} <a href="{{ url_for('web.new_widget') }}">Add the first one.</a>{% endif %}</p>
+  {% endif %}
+{% endblock %}
