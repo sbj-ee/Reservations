@@ -44,7 +44,9 @@ To run it the way it's deployed, use gunicorn:
 SECRET_KEY=dev gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
 ```
 
-Reset the database at any time with `flask --app app init-db`.
+Reset the database at any time with `flask --app app init-db`. Create an admin user with
+`flask --app app create-admin <username> <password>` (or `set-admin <username>` to promote
+an existing one) to access the `/admin` control panel.
 
 ## Tests
 
@@ -66,9 +68,10 @@ Tests live in `tests/` and use a throwaway temporary database per test (see
 | `app/schema.sql` | `user` / `widget` / `reservation` tables |
 | `app/models.py` | Data access + overlap check (`OverlapError`) |
 | `app/utils.py` | Datetime parsing/normalization |
-| `app/auth.py` | Register/login/logout + `login_required` / `api_auth_required` |
+| `app/auth.py` | Register/login/logout + `login_required` / `admin_required` / `api_auth_required` |
 | `app/web.py` | Server-rendered UI routes |
 | `app/api.py` | JSON API routes under `/api` |
+| `app/admin.py` | Admin control panel routes under `/admin` |
 | `app/templates/`, `app/static/` | Jinja templates and CSS |
 | `tests/` | pytest suite |
 | `wsgi.py` | gunicorn entrypoint (`wsgi:app`) |

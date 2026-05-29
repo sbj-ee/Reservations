@@ -5,6 +5,7 @@ import tempfile
 import pytest
 
 from app import create_app
+from app.db import get_db
 
 
 @pytest.fixture
@@ -44,6 +45,29 @@ class AuthActions:
 @pytest.fixture
 def auth(client):
     return AuthActions(client)
+
+
+@pytest.fixture
+def make_admin(app):
+    def _make_admin(username):
+        with app.app_context():
+            db = get_db()
+            db.execute("UPDATE user SET is_admin = 1 WHERE username = ?", (username,))
+            db.commit()
+
+    return _make_admin
+
+
+@pytest.fixture
+def is_admin(app):
+    def _is_admin(username):
+        with app.app_context():
+            row = get_db().execute(
+                "SELECT is_admin FROM user WHERE username = ?", (username,)
+            ).fetchone()
+            return bool(row and row["is_admin"])
+
+    return _is_admin
 
 
 def basic_auth_header(username="alice", password="secret"):

@@ -20,6 +20,7 @@ server-rendered web UI and a JSON API, and is served with **gunicorn**.
 - Reservations: book a widget for a `start`/`end` time, with overlap prevention
 - Web UI (Jinja templates) **and** a JSON API under `/api`
 - API accepts either the session cookie or HTTP Basic auth
+- Admin control panel at `/admin` to manage users, widgets, and reservations
 
 ## Setup
 
@@ -54,6 +55,22 @@ For local development with auto-reload you can instead use Flask's server:
 ```bash
 flask --app app run --debug
 ```
+
+## Admin
+
+Admins get a control panel at `/admin` to manage **users** (grant/revoke admin, delete),
+**widgets** (edit, delete), and **reservations** (delete any entry). The panel and its
+nav link are visible only to admin users.
+
+Create the first admin from the command line, then log in normally:
+
+```bash
+flask --app app create-admin alice s3cret      # new admin user
+flask --app app set-admin bob                   # grant admin to an existing user
+flask --app app set-admin bob --remove          # revoke it
+```
+
+![Admin control panel: the user management page](docs/admin-users.png)
 
 ## API
 
@@ -103,9 +120,10 @@ app/
   schema.sql       user / widget / reservation tables
   models.py        data access + overlap check (raises OverlapError)
   utils.py         datetime parsing/normalization
-  auth.py          register/login/logout + login_required / api_auth_required
+  auth.py          register/login/logout + login_required / admin_required / api_auth_required
   web.py           server-rendered UI routes
   api.py           JSON API routes (/api)
+  admin.py         admin control panel routes (/admin)
   templates/       Jinja templates
   static/style.css styling
 tests/             pytest suite

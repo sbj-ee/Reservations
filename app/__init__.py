@@ -15,12 +15,13 @@ def create_app(test_config=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
 
-    from . import db, auth, web, api
+    from . import db, auth, web, api, admin
 
     db.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(web.bp)
     app.register_blueprint(api.bp)
+    app.register_blueprint(admin.bp)
 
     @app.route("/")
     def index():

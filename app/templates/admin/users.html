@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Admin · Users{% endblock %}
+{% block content %}
+  <p><a href="{{ url_for('admin.dashboard') }}">&larr; Admin</a></p>
+  <h1>Users</h1>
+  <table class="reservations">
+    <thead>
+      <tr><th>ID</th><th>Username</th><th>Admin</th><th>Reservations</th><th>Joined</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u['id'] }}</td>
+          <td>{{ u['username'] }}{% if u['id'] == g.user['id'] %} <span class="muted">(you)</span>{% endif %}</td>
+          <td>{% if u['is_admin'] %}<span class="badge">admin</span>{% else %}&mdash;{% endif %}</td>
+          <td>{{ u['reservation_count'] }}</td>
+          <td>{{ u['created_at'] }}</td>
+          <td class="actions">
+            {% if u['id'] != g.user['id'] %}
+              <form method="post" action="{{ url_for('admin.toggle_admin', user_id=u['id']) }}">
+                <button type="submit" class="link-button">{{ 'Revoke admin' if u['is_admin'] else 'Make admin' }}</button>
+              </form>
+              <form method="post" action="{{ url_for('admin.delete_user', user_id=u['id']) }}"
+                    onsubmit="return confirm('Delete {{ u['username'] }} and all their reservations?');">
+                <button type="submit" class="link-button danger">Delete</button>
+              </form>
+            {% else %}
+              <span class="muted">&mdash;</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

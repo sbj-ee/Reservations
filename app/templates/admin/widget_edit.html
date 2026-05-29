@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Admin · Edit widget{% endblock %}
+{% block content %}
+  <p><a href="{{ url_for('admin.widgets') }}">&larr; Widgets</a></p>
+  <h1>Edit widget</h1>
+  <form method="post" class="card">
+    <label>Name
+      <input name="name" value="{{ widget['name'] }}" required autofocus>
+    </label>
+    <label>Description
+      <textarea name="description" rows="3">{{ widget['description'] }}</textarea>
+    </label>
+    <button type="submit">Save changes</button>
+  </form>
+{% endblock %}

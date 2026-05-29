@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+  <h1>Admin control panel</h1>
+  <nav class="subnav">
+    <a href="{{ url_for('admin.users') }}">Users</a>
+    <a href="{{ url_for('admin.widgets') }}">Widgets</a>
+    <a href="{{ url_for('admin.reservations') }}">Reservations</a>
+  </nav>
+
+  <div class="stats">
+    <a class="stat" href="{{ url_for('admin.users') }}">
+      <span class="stat-number">{{ counts.users }}</span>
+      <span class="stat-label">Users</span>
+    </a>
+    <a class="stat" href="{{ url_for('admin.widgets') }}">
+      <span class="stat-number">{{ counts.widgets }}</span>
+      <span class="stat-label">Widgets</span>
+    </a>
+    <a class="stat" href="{{ url_for('admin.reservations') }}">
+      <span class="stat-number">{{ counts.reservations }}</span>
+      <span class="stat-label">Reservations</span>
+    </a>
+  </div>
+{% endblock %}

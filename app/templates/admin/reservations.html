@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Admin · Reservations{% endblock %}
+{% block content %}
+  <p><a href="{{ url_for('admin.dashboard') }}">&larr; Admin</a></p>
+  <h1>Reservations</h1>
+  {% if reservations %}
+    <table class="reservations">
+      <thead>
+        <tr><th>ID</th><th>Widget</th><th>User</th><th>Start</th><th>End</th><th>Note</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+          <tr>
+            <td>{{ r['id'] }}</td>
+            <td><a href="{{ url_for('web.widget_detail', widget_id=r['widget_id']) }}">{{ r['widget_name'] }}</a></td>
+            <td>{{ r['username'] }}</td>
+            <td>{{ r['start_time'] }}</td>
+            <td>{{ r['end_time'] }}</td>
+            <td>{{ r['note'] }}</td>
+            <td class="actions">
+              <form method="post" action="{{ url_for('admin.delete_reservation', reservation_id=r['id']) }}"
+                    onsubmit="return confirm('Delete this reservation?');">
+                <button type="submit" class="link-button danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No reservations yet.</p>
+  {% endif %}
+{% endblock %}
