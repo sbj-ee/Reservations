@@ -132,6 +132,10 @@ table.reservations th, table.reservations td {
 table.reservations th { background: #eef1f5; font-size: 0.85rem; }
 table.reservations tr:last-child td { border-bottom: none; }
 table.reservations form { margin: 0; }
+table.reservations th.nowrap, table.reservations td.nowrap { white-space: nowrap; }
+
+/* Let wide tables scroll horizontally instead of overflowing the page. */
+.table-scroll { overflow-x: auto; }
 
 ul.flashes {
   list-style: none;
