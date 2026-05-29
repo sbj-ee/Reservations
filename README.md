@@ -111,3 +111,12 @@ app/
 tests/             pytest suite
 wsgi.py            gunicorn entrypoint (wsgi:app)
 ```
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, testing,
+and pull request guidelines.
+
+## License
+
+Released under the [MIT License](LICENSE).
