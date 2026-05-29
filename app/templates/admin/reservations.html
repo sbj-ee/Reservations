@@ -3,6 +3,7 @@
 {% block content %}
   <p><a href="{{ url_for('admin.dashboard') }}">&larr; Admin</a></p>
   <h1>Reservations</h1>
+  <p class="muted">Times below are shown in your local time zone; the CSV export uses UTC.</p>
 
   <form method="get" action="{{ url_for('admin.reservations_csv') }}" class="filter">
     <label>From <input type="date" name="from"></label>
@@ -21,8 +22,8 @@
             <td>{{ r['id'] }}</td>
             <td><a href="{{ url_for('web.widget_detail', widget_id=r['widget_id']) }}">{{ r['widget_name'] }}</a></td>
             <td>{{ r['username'] }}</td>
-            <td>{{ r['start_time'] }}</td>
-            <td>{{ r['end_time'] }}</td>
+            <td><time class="js-utc" datetime="{{ r['start_time'].replace(' ', 'T') }}Z">{{ r['start_time'] }}</time></td>
+            <td><time class="js-utc" datetime="{{ r['end_time'].replace(' ', 'T') }}Z">{{ r['end_time'] }}</time></td>
             <td>{{ r['note'] }}</td>
             <td class="actions">
               <form method="post" action="{{ url_for('admin.delete_reservation', reservation_id=r['id']) }}"

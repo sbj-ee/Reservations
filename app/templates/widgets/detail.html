@@ -12,8 +12,8 @@
       <tbody>
         {% for r in reservations %}
           <tr>
-            <td>{{ r['start_time'] }}</td>
-            <td>{{ r['end_time'] }}</td>
+            <td><time class="js-utc" datetime="{{ r['start_time'].replace(' ', 'T') }}Z">{{ r['start_time'] }}</time></td>
+            <td><time class="js-utc" datetime="{{ r['end_time'].replace(' ', 'T') }}Z">{{ r['end_time'] }}</time></td>
             <td>{{ r['username'] }}</td>
             <td>{{ r['note'] }}</td>
           </tr>
@@ -26,12 +26,13 @@
 
   {% if g.user %}
     <h2>Reserve this widget</h2>
+    <p class="muted">Enter times in your local time zone — they're stored and compared in UTC.</p>
     <form method="post" action="{{ url_for('web.reserve_widget', widget_id=widget['id']) }}" class="card">
       <label>Start
-        <input type="datetime-local" name="start_time" required>
+        <input type="datetime-local" name="start_time" class="js-local-dt" required>
       </label>
       <label>End
-        <input type="datetime-local" name="end_time" required>
+        <input type="datetime-local" name="end_time" class="js-local-dt" required>
       </label>
       <label>Note (optional)
         <input name="note">

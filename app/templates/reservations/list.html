@@ -2,6 +2,7 @@
 {% block title %}My reservations{% endblock %}
 {% block content %}
   <h1>My reservations</h1>
+  {% if reservations %}<p class="muted">Times are shown in your local time zone.</p>{% endif %}
   {% if reservations %}
     <table class="reservations">
       <thead><tr><th>Widget</th><th>Start</th><th>End</th><th>Note</th><th></th></tr></thead>
@@ -9,8 +10,8 @@
         {% for r in reservations %}
           <tr>
             <td><a href="{{ url_for('web.widget_detail', widget_id=r['widget_id']) }}">{{ r['widget_name'] }}</a></td>
-            <td>{{ r['start_time'] }}</td>
-            <td>{{ r['end_time'] }}</td>
+            <td><time class="js-utc" datetime="{{ r['start_time'].replace(' ', 'T') }}Z">{{ r['start_time'] }}</time></td>
+            <td><time class="js-utc" datetime="{{ r['end_time'].replace(' ', 'T') }}Z">{{ r['end_time'] }}</time></td>
             <td>{{ r['note'] }}</td>
             <td class="actions">
               <a href="{{ url_for('web.edit_reservation', reservation_id=r['id']) }}">Edit</a>

@@ -3,13 +3,14 @@
 {% block content %}
   <p><a href="{{ url_for('web.my_reservations') }}">&larr; My reservations</a></p>
   <h1>Edit reservation</h1>
+  <p class="muted">Times are shown in your local time zone and stored in UTC.</p>
   <form method="post" class="card">
     <label>Start
-      <input type="datetime-local" name="start_time"
+      <input type="datetime-local" name="start_time" class="js-local-dt js-utc-input"
              value="{{ reservation['start_time'].replace(' ', 'T') }}" required>
     </label>
     <label>End
-      <input type="datetime-local" name="end_time"
+      <input type="datetime-local" name="end_time" class="js-local-dt js-utc-input"
              value="{{ reservation['end_time'].replace(' ', 'T') }}" required>
     </label>
     <label>Note (optional)

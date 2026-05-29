@@ -82,9 +82,11 @@ A few conventions worth knowing:
 - **Shared data logic lives in `app/models.py`.** Both the web and API layers call the
   same functions, so business rules (like overlap rejection) stay in one place. Add new
   query/mutation logic there rather than inside route handlers.
-- **Times** are accepted as `YYYY-MM-DDTHH:MM` or `YYYY-MM-DD HH:MM` and stored in the
-  canonical `YYYY-MM-DD HH:MM` form so string ordering matches chronological order. Reuse
-  `app/utils.parse_dt` for any new datetime input.
+- **Times are stored in UTC.** `app/utils.parse_dt` canonicalizes input to a UTC
+  `YYYY-MM-DD HH:MM` string (tz-aware ISO input is converted; naive input is assumed UTC),
+  so string ordering matches chronological order and overlap checks work across time zones.
+  Reuse it for any new datetime input. The browser (`app/static/tz.js`) handles local↔UTC
+  for the UI; keep server-side logic in UTC.
 - **API errors** return JSON `{"error": "..."}` with a meaningful status code
   (`400` bad input, `401` unauthenticated, `403` forbidden, `404` missing, `409` overlap).
 - **Notifications** fire from the route layer after a reservation is created/changed/cancelled

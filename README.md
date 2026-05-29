@@ -132,8 +132,12 @@ MAIL_USERNAME=apikey MAIL_PASSWORD=secret \
 | PUT | `/api/reservations/<id>` | yes | Change your reservation (`{start_time, end_time, note}`) — `409` on overlap |
 | DELETE | `/api/reservations/<id>` | yes | Cancel your reservation |
 
-Times accept `YYYY-MM-DDTHH:MM` or `YYYY-MM-DD HH:MM` and are stored/returned as
-`YYYY-MM-DD HH:MM`.
+**Times are UTC.** Reservation times are stored and returned in UTC as
+`YYYY-MM-DD HH:MM`. The API accepts a naive time (assumed UTC) or a time-zone-aware
+ISO 8601 value with an offset or `Z` (e.g. `2026-06-01T09:00-05:00`), which the server
+converts to UTC. Storing one canonical timeline is what lets the overlap check reject a
+double booking even when the two bookings were entered in different time zones. The web UI
+converts to/from your local zone automatically (see [Time zones](#time-zones)).
 
 ### Example
 
@@ -148,6 +152,18 @@ curl -u alice:secret -X POST http://127.0.0.1:8000/api/widgets/1/reservations \
   -H 'Content-Type: application/json' \
   -d '{"start_time": "2026-06-01T09:00", "end_time": "2026-06-01T10:00"}'
 ```
+
+## Time zones
+
+All reservation times live in the database in **UTC** — a single canonical timeline. This
+is what prevents cross-time-zone double bookings: a 09:00 booking made in New York and a
+14:00 booking made in London are compared as the same UTC instants, so an overlap is caught.
+
+- **Storage / comparison:** UTC, always (`app/utils.parse_dt` canonicalizes input to UTC).
+- **Web UI:** `app/static/tz.js` converts your local input to UTC on submit and renders
+  stored UTC times back in your local zone, so you always see and type local time.
+- **API:** send UTC (naive) or a tz-aware ISO value with an offset/`Z`; responses are UTC.
+- **CSV export:** UTC (it's the raw data).
 
 ## Tests
 
@@ -164,14 +180,14 @@ app/
   db.py            SQLite connection + init-db CLI command
   schema.sql       user / widget / reservation tables
   models.py        data access + overlap check (raises OverlapError)
-  utils.py         datetime parsing/normalization
+  utils.py         datetime parsing/normalization to UTC
   auth.py          register/login/logout + login_required / admin_required / api_auth_required
   web.py           server-rendered UI routes
   api.py           JSON API routes (/api)
   admin.py         admin control panel routes (/admin) + CSV export + notifications log
   notifications.py email (SMTP) + SMS (Twilio) channels with log/audit fallback
   templates/       Jinja templates
-  static/style.css styling
+  static/          style.css + tz.js (local↔UTC) + favicon/logo
 tests/             pytest suite
 wsgi.py            gunicorn entrypoint (wsgi:app)
 ```
