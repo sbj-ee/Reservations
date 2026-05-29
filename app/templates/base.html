@@ -10,7 +10,10 @@
 <body>
   <header>
     <nav>
-      <a class="brand" href="{{ url_for('web.list_widgets') }}">Widget Reservations</a>
+      <a class="brand" href="{{ url_for('web.list_widgets') }}">
+        <img class="logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="28" height="28">
+        <span>Widget Reservations</span>
+      </a>
       <span class="spacer"></span>
       <a href="{{ url_for('web.list_widgets') }}">Widgets</a>
       {% if g.user %}
