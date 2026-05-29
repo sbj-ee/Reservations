@@ -29,6 +29,10 @@
     </nav>
   </header>
   <main>
+    {% if last_login_notice %}
+      <div class="banner">Welcome back — your last login was
+        <time class="js-utc" datetime="{{ last_login_notice.replace(' ', 'T') }}Z">{{ last_login_notice }}</time>.</div>
+    {% endif %}
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         <ul class="flashes">

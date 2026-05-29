@@ -210,6 +210,15 @@ def get_user(user_id):
     return db.execute("SELECT * FROM user WHERE id = ?", (user_id,)).fetchone()
 
 
+def record_login(user_id):
+    """Stamp the user's last login with the current UTC time."""
+    db = get_db()
+    db.execute(
+        "UPDATE user SET last_login_at = datetime('now') WHERE id = ?", (user_id,)
+    )
+    db.commit()
+
+
 def list_users():
     db = get_db()
     return db.execute(

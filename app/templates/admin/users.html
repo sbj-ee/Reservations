@@ -5,7 +5,7 @@
   <h1>Users</h1>
   <table class="reservations">
     <thead>
-      <tr><th>ID</th><th>Username</th><th>Email</th><th>Phone</th><th>Admin</th><th>Reservations</th><th>Joined</th><th>Actions</th></tr>
+      <tr><th>ID</th><th>Username</th><th>Email</th><th>Phone</th><th>Admin</th><th>Reservations</th><th>Last login</th><th>Joined</th><th>Actions</th></tr>
     </thead>
     <tbody>
       {% for u in users %}
@@ -16,7 +16,12 @@
           <td>{{ u['phone'] or '—' }}</td>
           <td>{% if u['is_admin'] %}<span class="badge">admin</span>{% else %}&mdash;{% endif %}</td>
           <td>{{ u['reservation_count'] }}</td>
-          <td>{{ u['created_at'] }}</td>
+          <td>
+            {% if u['last_login_at'] %}
+              <time class="js-utc" datetime="{{ u['last_login_at'].replace(' ', 'T') }}Z">{{ u['last_login_at'] }}</time>
+            {% else %}<span class="muted">Never</span>{% endif %}
+          </td>
+          <td><time class="js-utc" datetime="{{ u['created_at'].replace(' ', 'T') }}Z">{{ u['created_at'] }}</time></td>
           <td class="actions">
             <a href="{{ url_for('admin.edit_user', user_id=u['id']) }}">Edit</a>
             {% if u['id'] != g.user['id'] %}

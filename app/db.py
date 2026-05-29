@@ -49,6 +49,8 @@ def _migrate(db):
         db.execute("ALTER TABLE user ADD COLUMN email TEXT")
     if "phone" not in columns:
         db.execute("ALTER TABLE user ADD COLUMN phone TEXT")
+    if "last_login_at" not in columns:
+        db.execute("ALTER TABLE user ADD COLUMN last_login_at TEXT")
     # Enforce unique email/phone (NULLs allowed). On a pre-existing database that
     # already holds duplicates, the index can't be built — log and carry on rather
     # than failing startup.

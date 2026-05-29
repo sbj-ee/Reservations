@@ -26,6 +26,12 @@ def _utc_now_str():
     return datetime.now(timezone.utc).strftime(_RESET_TS_FORMAT)
 
 
+@bp.app_context_processor
+def inject_last_login_notice():
+    # Surface the prior login time once, on the first page rendered after login.
+    return {"last_login_notice": session.pop("last_login_notice", None)}
+
+
 @bp.before_app_request
 def load_logged_in_user():
     user_id = session.get("user_id")
@@ -141,8 +147,12 @@ def login():
         if user is None:
             flash("Incorrect username or password.")
         else:
+            previous_login = user["last_login_at"]  # captured before we overwrite it
+            models.record_login(user["id"])
             session.clear()
             session["user_id"] = user["id"]
+            if previous_login:
+                session["last_login_notice"] = previous_login
             next_url = request.form.get("next") or request.args.get("next")
             if next_url and next_url.startswith("/"):
                 return redirect(next_url)

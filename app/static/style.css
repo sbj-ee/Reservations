@@ -143,6 +143,15 @@ ul.flashes {
   color: #9a3412;
 }
 
+.banner {
+  padding: 0.75rem 1rem;
+  margin: 0 0 1rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e3a8a;
+}
+
 /* --- Admin --- */
 .subnav {
   display: flex;

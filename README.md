@@ -24,6 +24,7 @@ server-rendered web UI and a JSON API, and is served with **gunicorn**.
 - API accepts either the session cookie or HTTP Basic auth
 - Admin control panel at `/admin` to manage users, widgets, and reservations
 - Self-service account page (`/account`): update your email/phone and change your password
+- Last-login tracking: shown as a "welcome back" banner on sign-in and in the admin user list
 - CSV export of reservations (optionally filtered by date / widget / user)
 - Email + SMS notifications when a reservation is created, changed, or cancelled
 
