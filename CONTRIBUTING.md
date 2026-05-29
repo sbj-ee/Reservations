@@ -89,6 +89,10 @@ A few conventions worth knowing:
   for the UI; keep server-side logic in UTC.
 - **API errors** return JSON `{"error": "..."}` with a meaningful status code
   (`400` bad input, `401` unauthenticated, `403` forbidden, `404` missing, `409` overlap).
+- **User uniqueness:** username, email, and phone are unique (emails/phones are optional, so
+  NULLs are allowed and don't collide). Insert/update through `app/models.py`, which converts
+  a SQLite `UNIQUE` violation into a friendly, field-specific `ValueError` via
+  `unique_violation_message`; routes catch it and flash the message.
 - **Notifications** fire from the route layer after a reservation is created/changed/cancelled
   via `app/notifications.py`. Email/SMS providers are configured with env vars (`MAIL_*`,
   `TWILIO_*`); when unset, messages are logged and recorded to the `notification` table, so

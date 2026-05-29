@@ -78,11 +78,14 @@ def account():
     if request.method == "POST":
         action = request.form.get("action")
         if action == "profile":
-            models.update_contact(
-                g.user["id"], request.form.get("email"), request.form.get("phone")
-            )
-            flash("Contact details updated.")
-            return redirect(url_for("web.account"))
+            try:
+                models.update_contact(
+                    g.user["id"], request.form.get("email"), request.form.get("phone")
+                )
+                flash("Contact details updated.")
+                return redirect(url_for("web.account"))
+            except ValueError as e:
+                flash(str(e))
         if action == "password":
             current = request.form.get("current_password") or ""
             new = request.form.get("new_password") or ""

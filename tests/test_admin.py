@@ -129,6 +129,21 @@ def test_admin_edit_user_duplicate_username_rejected(client, auth, make_admin, u
     assert user_row("bob") is not None  # unchanged
 
 
+def test_admin_edit_user_duplicate_email_rejected(client, auth, make_admin, user_row):
+    auth.register(username="alice", email="alice@example.com")  # user 1
+    make_admin("alice")
+    auth.logout()
+    auth.register(username="bob", password="secret", email="bob@example.com")  # user 2
+    auth.logout()
+    auth.login(username="alice")
+    resp = client.post(
+        "/admin/users/2/edit",
+        data={"username": "bob", "email": "alice@example.com", "phone": ""},
+    )
+    assert b"email is already in use" in resp.data
+    assert user_row("bob")["email"] == "bob@example.com"  # unchanged
+
+
 def test_admin_reset_user_password(client, auth, make_admin):
     auth.register(username="alice")
     make_admin("alice")

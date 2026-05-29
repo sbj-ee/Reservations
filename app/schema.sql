@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS password_reset;
 DROP TABLE IF EXISTS notification;
 DROP TABLE IF EXISTS reservation;
 DROP TABLE IF EXISTS widget;
@@ -7,8 +8,8 @@ CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
+  email TEXT UNIQUE,
+  phone TEXT UNIQUE,
   is_admin INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -51,6 +52,18 @@ CREATE TABLE notification (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Single-use, time-limited password reset tokens. Only the SHA-256 hash of the
+-- token is stored, so a database leak cannot produce a working reset link.
+CREATE TABLE password_reset (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  token_hash TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX idx_reservation_widget ON reservation (widget_id, start_time, end_time);
 CREATE INDEX idx_reservation_user ON reservation (user_id);
 CREATE INDEX idx_notification_created ON notification (id DESC);
+CREATE INDEX idx_password_reset_token ON password_reset (token_hash);

@@ -16,6 +16,8 @@ server-rendered web UI and a JSON API, and is served with **gunicorn**.
 ## Features
 
 - Username/password accounts (session login + password hashing via Werkzeug)
+- Unique usernames, emails, and phone numbers (email/phone optional)
+- Self-service "forgot password": a single-use, time-limited reset link sent by email
 - Widgets: anyone can browse; logged-in users can create them
 - Reservations: book a widget for a `start`/`end` time, with overlap prevention
 - Web UI (Jinja templates) **and** a JSON API under `/api`
@@ -66,6 +68,12 @@ reset password, grant/revoke admin, delete), **widgets** (edit, delete), and
 **reservations** (delete any entry). The panel and its nav link are visible only to admin
 users. Every signed-in user can also manage their own email, phone, and password from the
 **Account** page (`/account`).
+
+Locked out? **Forgot password?** on the login page (`/auth/forgot`) emails a single-use
+reset link that expires in an hour. Tokens are stored only as a SHA-256 hash, so a database
+leak can't produce a working link. As with all notifications, when email isn't configured
+the link is written to the app log and recorded (rather than delivered) — see
+[Notifications](#notifications).
 
 Create the first admin from the command line, then log in normally:
 

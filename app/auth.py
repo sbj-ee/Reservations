@@ -1,13 +1,29 @@
 import functools
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
 
 from flask import (
     Blueprint, abort, flash, g, redirect, render_template, request, session, url_for, jsonify
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from . import models
 from .db import get_db
+from .notifications import notify_password_reset
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+RESET_TTL = timedelta(hours=1)
+_RESET_TS_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+def _hash_token(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _utc_now_str():
+    return datetime.now(timezone.utc).strftime(_RESET_TS_FORMAT)
 
 
 @bp.before_app_request
@@ -99,21 +115,15 @@ def register():
             error = "Password is required."
 
         if error is None:
-            db = get_db()
             try:
-                db.execute(
-                    "INSERT INTO user (username, password_hash, email, phone) VALUES (?, ?, ?, ?)",
-                    (username, generate_password_hash(password), email, phone),
+                user_id = models.create_user(
+                    username, generate_password_hash(password), email, phone
                 )
-                db.commit()
-            except db.IntegrityError:
-                error = f"User {username} is already registered."
+            except ValueError as e:
+                error = str(e)
             else:
-                user = db.execute(
-                    "SELECT * FROM user WHERE username = ?", (username,)
-                ).fetchone()
                 session.clear()
-                session["user_id"] = user["id"]
+                session["user_id"] = user_id
                 return redirect(url_for("web.list_widgets"))
 
         flash(error)
@@ -144,3 +154,41 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("web.list_widgets"))
+
+
+@bp.route("/forgot", methods=("GET", "POST"))
+def forgot_password():
+    if request.method == "POST":
+        user = models.find_user_by_identifier(request.form.get("identifier"))
+        # Only act when we have an account with an email, but always show the same
+        # message so the form can't be used to discover which accounts exist.
+        if user is not None and user["email"]:
+            token = secrets.token_urlsafe(32)
+            expires_at = (datetime.now(timezone.utc) + RESET_TTL).strftime(_RESET_TS_FORMAT)
+            models.create_password_reset(user["id"], _hash_token(token), expires_at)
+            reset_url = url_for("auth.reset_password", token=token, _external=True)
+            notify_password_reset(user["id"], user["email"], user["username"], reset_url)
+        flash("If an account matches, a password reset link has been sent.")
+        return redirect(url_for("auth.login"))
+    return render_template("auth/forgot.html")
+
+
+@bp.route("/reset/<token>", methods=("GET", "POST"))
+def reset_password(token):
+    reset = models.get_password_reset(_hash_token(token))
+    if reset is None or reset["used"] or reset["expires_at"] < _utc_now_str():
+        flash("That password reset link is invalid or has expired.")
+        return redirect(url_for("auth.forgot_password"))
+    if request.method == "POST":
+        new = request.form.get("new_password") or ""
+        confirm = request.form.get("confirm_password") or ""
+        if not new:
+            flash("New password is required.")
+        elif new != confirm:
+            flash("New passwords do not match.")
+        else:
+            models.set_password(reset["user_id"], new)
+            models.mark_reset_used(reset["id"])
+            flash("Your password has been reset. Please log in.")
+            return redirect(url_for("auth.login"))
+    return render_template("auth/reset.html", token=token)

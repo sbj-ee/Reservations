@@ -61,6 +61,17 @@ def test_change_password_wrong_current(client, auth):
     assert auth.login(password="oldpw").status_code == 302
 
 
+def test_update_contact_duplicate_email_rejected(client, auth, user_row):
+    auth.register(username="alice", email="taken@example.com")
+    auth.logout()
+    auth.register(username="bob", password="secret")  # bob logged in, no email
+    resp = client.post(
+        "/account", data={"action": "profile", "email": "taken@example.com", "phone": ""}
+    )
+    assert b"email is already in use" in resp.data
+    assert user_row("bob")["email"] is None
+
+
 def test_change_password_mismatch(client, auth):
     auth.register(password="oldpw")
     resp = client.post(

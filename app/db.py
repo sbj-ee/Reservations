@@ -49,6 +49,18 @@ def _migrate(db):
         db.execute("ALTER TABLE user ADD COLUMN email TEXT")
     if "phone" not in columns:
         db.execute("ALTER TABLE user ADD COLUMN phone TEXT")
+    # Enforce unique email/phone (NULLs allowed). On a pre-existing database that
+    # already holds duplicates, the index can't be built — log and carry on rather
+    # than failing startup.
+    for col in ("email", "phone"):
+        try:
+            db.execute(
+                f"CREATE UNIQUE INDEX IF NOT EXISTS idx_user_{col} ON user ({col})"
+            )
+        except sqlite3.Error:
+            current_app.logger.warning(
+                "could not add unique index on user.%s (existing duplicates?)", col
+            )
     db.execute(
         """CREATE TABLE IF NOT EXISTS notification (
              id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +75,19 @@ def _migrate(db):
              detail TEXT NOT NULL DEFAULT '',
              created_at TEXT NOT NULL DEFAULT (datetime('now'))
            )"""
+    )
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS password_reset (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             user_id INTEGER NOT NULL,
+             token_hash TEXT NOT NULL,
+             expires_at TEXT NOT NULL,
+             used INTEGER NOT NULL DEFAULT 0,
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
+           )"""
+    )
+    db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset (token_hash)"
     )
     db.commit()
 

@@ -91,14 +91,14 @@ def _send_sms(to_number, body):
         resp.read()
 
 
-def _deliver(channel, recipient, configured, do_send, snapshot, event, subject, body):
+def _deliver(reservation_id, user_id, event, channel, recipient, configured, do_send, subject, body):
     """Run one channel: send if configured, else log; record the outcome either way."""
     status, detail = "logged", ""
     if configured:
         try:
             do_send()
             status = "sent"
-        except Exception as e:  # provider error must not break the booking
+        except Exception as e:  # provider error must not break the caller
             status, detail = "failed", f"{type(e).__name__}: {e}"
             current_app.logger.warning(
                 "%s notification to %s failed: %s", channel, recipient, detail
@@ -108,8 +108,7 @@ def _deliver(channel, recipient, configured, do_send, snapshot, event, subject, 
             "[notification:%s] to=%s subject=%r body=%r", channel, recipient, subject, body
         )
     models.record_notification(
-        snapshot["id"], snapshot["user_id"], event, channel, recipient,
-        subject, body, status, detail,
+        reservation_id, user_id, event, channel, recipient, subject, body, status, detail
     )
 
 
@@ -121,25 +120,42 @@ def notify_reservation_event(event, snapshot):
         return
     try:
         subject, body = _build_message(event, snapshot)
+        rid, uid = snapshot["id"], snapshot["user_id"]
         delivered = False
         if snapshot["email"]:
-            _deliver(
-                "email", snapshot["email"], email_configured(),
-                lambda: _send_email(snapshot["email"], subject, body),
-                snapshot, event, subject, body,
-            )
+            _deliver(rid, uid, event, "email", snapshot["email"], email_configured(),
+                     lambda: _send_email(snapshot["email"], subject, body), subject, body)
             delivered = True
         if snapshot["phone"]:
-            _deliver(
-                "sms", snapshot["phone"], sms_configured(),
-                lambda: _send_sms(snapshot["phone"], body),
-                snapshot, event, subject, body,
-            )
+            _deliver(rid, uid, event, "sms", snapshot["phone"], sms_configured(),
+                     lambda: _send_sms(snapshot["phone"], body), subject, body)
             delivered = True
         if not delivered:
             models.record_notification(
-                snapshot["id"], snapshot["user_id"], event, "none", "",
-                subject, body, "skipped", "owner has no email or phone on file",
+                rid, uid, event, "none", "", subject, body,
+                "skipped", "owner has no email or phone on file",
             )
     except Exception as e:
         current_app.logger.exception("notification dispatch failed: %s", e)
+
+
+def notify_password_reset(user_id, email, username, reset_url):
+    """Email a password-reset link over the email channel. Never raises."""
+    try:
+        subject = "Reset your Widget Reservations password"
+        body = "\n".join([
+            f"Hi {username},",
+            "",
+            "We received a request to reset your password. Open the link below to choose "
+            "a new one:",
+            reset_url,
+            "",
+            "This link expires in 1 hour and can be used once. If you didn't request it, "
+            "you can safely ignore this email.",
+            "",
+            "— Widget Reservations",
+        ])
+        _deliver(None, user_id, "password_reset", "email", email, email_configured(),
+                 lambda: _send_email(email, subject, body), subject, body)
+    except Exception as e:
+        current_app.logger.exception("password reset notification failed: %s", e)

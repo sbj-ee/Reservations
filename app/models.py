@@ -8,6 +8,18 @@ class OverlapError(Exception):
     """Raised when a reservation would overlap an existing one for the same widget."""
 
 
+def unique_violation_message(exc):
+    """Map a SQLite UNIQUE-constraint error to a friendly, field-specific message."""
+    msg = str(exc).lower()
+    if "user.email" in msg:
+        return "that email is already in use"
+    if "user.phone" in msg:
+        return "that phone number is already in use"
+    if "user.username" in msg:
+        return "that username is already taken"
+    return "that username, email, or phone is already in use"
+
+
 # --- Widgets ---------------------------------------------------------------
 
 def list_widgets():
@@ -218,9 +230,26 @@ def set_user_admin(user_id, is_admin):
     db.commit()
 
 
+def create_user(username, password_hash, email=None, phone=None):
+    """Insert a user. Raises ValueError on a blank or non-unique field."""
+    username = (username or "").strip()
+    if not username:
+        raise ValueError("username is required")
+    db = get_db()
+    try:
+        cur = db.execute(
+            "INSERT INTO user (username, password_hash, email, phone) VALUES (?, ?, ?, ?)",
+            (username, password_hash, (email or "").strip() or None, (phone or "").strip() or None),
+        )
+        db.commit()
+        return cur.lastrowid
+    except db.IntegrityError as e:
+        raise ValueError(unique_violation_message(e))
+
+
 def update_user_account(user_id, username, email, phone):
     """Admin edit of a user's username + contact info. Raises ValueError on a
-    blank or already-taken username."""
+    blank or non-unique field."""
     username = (username or "").strip()
     if not username:
         raise ValueError("username is required")
@@ -231,18 +260,22 @@ def update_user_account(user_id, username, email, phone):
             (username, (email or "").strip() or None, (phone or "").strip() or None, user_id),
         )
         db.commit()
-    except db.IntegrityError:
-        raise ValueError("that username is already taken")
+    except db.IntegrityError as e:
+        raise ValueError(unique_violation_message(e))
 
 
 def update_contact(user_id, email, phone):
-    """Self-service update of a user's own email / phone."""
+    """Self-service update of a user's own email / phone. Raises ValueError if the
+    email or phone is already used by another account."""
     db = get_db()
-    db.execute(
-        "UPDATE user SET email = ?, phone = ? WHERE id = ?",
-        ((email or "").strip() or None, (phone or "").strip() or None, user_id),
-    )
-    db.commit()
+    try:
+        db.execute(
+            "UPDATE user SET email = ?, phone = ? WHERE id = ?",
+            ((email or "").strip() or None, (phone or "").strip() or None, user_id),
+        )
+        db.commit()
+    except db.IntegrityError as e:
+        raise ValueError(unique_violation_message(e))
 
 
 def set_password(user_id, raw_password):
@@ -312,3 +345,40 @@ def list_notifications(limit=100):
     return db.execute(
         "SELECT * FROM notification ORDER BY id DESC LIMIT ?", (limit,)
     ).fetchall()
+
+
+# --- Password reset --------------------------------------------------------
+
+def find_user_by_identifier(identifier):
+    """Find a user by username or email (for password reset requests)."""
+    identifier = (identifier or "").strip()
+    if not identifier:
+        return None
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM user WHERE username = ? OR email = ?", (identifier, identifier)
+    ).fetchone()
+
+
+def create_password_reset(user_id, token_hash, expires_at):
+    """Store a reset token (hashed), replacing any unused ones for the user."""
+    db = get_db()
+    db.execute("DELETE FROM password_reset WHERE user_id = ? AND used = 0", (user_id,))
+    db.execute(
+        "INSERT INTO password_reset (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
+        (user_id, token_hash, expires_at),
+    )
+    db.commit()
+
+
+def get_password_reset(token_hash):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM password_reset WHERE token_hash = ?", (token_hash,)
+    ).fetchone()
+
+
+def mark_reset_used(reset_id):
+    db = get_db()
+    db.execute("UPDATE password_reset SET used = 1 WHERE id = ?", (reset_id,))
+    db.commit()
