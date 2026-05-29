@@ -28,10 +28,13 @@ class AuthActions:
     def __init__(self, client):
         self._client = client
 
-    def register(self, username="alice", password="secret"):
-        return self._client.post(
-            "/auth/register", data={"username": username, "password": password}
-        )
+    def register(self, username="alice", password="secret", email=None, phone=None):
+        data = {"username": username, "password": password}
+        if email is not None:
+            data["email"] = email
+        if phone is not None:
+            data["phone"] = phone
+        return self._client.post("/auth/register", data=data)
 
     def login(self, username="alice", password="secret"):
         return self._client.post(
@@ -68,6 +71,20 @@ def is_admin(app):
             return bool(row and row["is_admin"])
 
     return _is_admin
+
+
+@pytest.fixture
+def notifications(app):
+    def _notifications():
+        with app.app_context():
+            return [
+                dict(r)
+                for r in get_db()
+                .execute("SELECT * FROM notification ORDER BY id")
+                .fetchall()
+            ]
+
+    return _notifications
 
 
 def basic_auth_header(username="alice", password="secret"):

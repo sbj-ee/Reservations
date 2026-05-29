@@ -45,7 +45,26 @@ def _migrate(db):
     columns = {r["name"] for r in db.execute("PRAGMA table_info(user)").fetchall()}
     if "is_admin" not in columns:
         db.execute("ALTER TABLE user ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
-        db.commit()
+    if "email" not in columns:
+        db.execute("ALTER TABLE user ADD COLUMN email TEXT")
+    if "phone" not in columns:
+        db.execute("ALTER TABLE user ADD COLUMN phone TEXT")
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS notification (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             reservation_id INTEGER,
+             user_id INTEGER,
+             event TEXT NOT NULL,
+             channel TEXT NOT NULL,
+             recipient TEXT NOT NULL DEFAULT '',
+             subject TEXT NOT NULL DEFAULT '',
+             body TEXT NOT NULL DEFAULT '',
+             status TEXT NOT NULL,
+             detail TEXT NOT NULL DEFAULT '',
+             created_at TEXT NOT NULL DEFAULT (datetime('now'))
+           )"""
+    )
+    db.commit()
 
 
 @click.command("init-db")

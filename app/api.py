@@ -2,6 +2,7 @@ from flask import Blueprint, g, jsonify, request
 
 from . import models
 from .auth import api_auth_required
+from .notifications import notify_reservation_event
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -95,6 +96,7 @@ def create_reservation(widget_id):
         return error(str(e), 409)
     except ValueError as e:
         return error(str(e), 400)
+    notify_reservation_event("created", models.reservation_snapshot(reservation_id))
     return jsonify(reservation_json(models.get_reservation(reservation_id))), 201
 
 
@@ -106,6 +108,30 @@ def my_reservations():
     )
 
 
+@bp.route("/reservations/<int:reservation_id>", methods=("PUT",))
+@api_auth_required
+def update_reservation(reservation_id):
+    reservation = models.get_reservation(reservation_id)
+    if reservation is None:
+        return error("reservation not found", 404)
+    if reservation["user_id"] != g.user["id"]:
+        return error("forbidden", 403)
+    data = request.get_json(silent=True) or {}
+    try:
+        models.update_reservation(
+            reservation_id,
+            data.get("start_time"),
+            data.get("end_time"),
+            data.get("note", ""),
+        )
+    except models.OverlapError as e:
+        return error(str(e), 409)
+    except ValueError as e:
+        return error(str(e), 400)
+    notify_reservation_event("updated", models.reservation_snapshot(reservation_id))
+    return jsonify(reservation_json(models.get_reservation(reservation_id)))
+
+
 @bp.route("/reservations/<int:reservation_id>", methods=("DELETE",))
 @api_auth_required
 def cancel_reservation(reservation_id):
@@ -114,5 +140,7 @@ def cancel_reservation(reservation_id):
         return error("reservation not found", 404)
     if reservation["user_id"] != g.user["id"]:
         return error("forbidden", 403)
+    snapshot = models.reservation_snapshot(reservation_id)
     models.delete_reservation(reservation_id)
+    notify_reservation_event("cancelled", snapshot)
     return "", 204

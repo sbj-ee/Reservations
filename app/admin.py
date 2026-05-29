@@ -1,9 +1,13 @@
+import csv
+import io
+
 from flask import (
-    Blueprint, abort, flash, g, redirect, render_template, request, url_for
+    Blueprint, Response, abort, flash, g, redirect, render_template, request, url_for
 )
 
 from . import models
 from .auth import admin_required
+from .notifications import notify_reservation_event
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -104,6 +108,45 @@ def delete_reservation(reservation_id):
     reservation = models.get_reservation(reservation_id)
     if reservation is None:
         abort(404)
+    snapshot = models.reservation_snapshot(reservation_id)
     models.delete_reservation(reservation_id)
+    notify_reservation_event("cancelled", snapshot)
     flash("Reservation deleted.")
     return redirect(url_for("admin.reservations"))
+
+
+@bp.route("/reports/reservations.csv")
+@admin_required
+def reservations_csv():
+    rows = models.query_reservations(
+        date_from=request.args.get("from"),
+        date_to=request.args.get("to"),
+        widget_id=request.args.get("widget_id", type=int),
+        user_id=request.args.get("user_id", type=int),
+    )
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        ["reservation_id", "widget_id", "widget", "user",
+         "start_time", "end_time", "note", "created_at"]
+    )
+    for r in rows:
+        writer.writerow([
+            r["id"], r["widget_id"], r["widget_name"], r["username"],
+            r["start_time"], r["end_time"], r["note"], r["created_at"],
+        ])
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=reservations.csv"},
+    )
+
+
+# --- Notifications log -----------------------------------------------------
+
+@bp.route("/notifications")
+@admin_required
+def notifications():
+    return render_template(
+        "admin/notifications.html", notifications=models.list_notifications()
+    )

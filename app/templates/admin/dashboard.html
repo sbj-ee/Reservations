@@ -6,6 +6,7 @@
     <a href="{{ url_for('admin.users') }}">Users</a>
     <a href="{{ url_for('admin.widgets') }}">Widgets</a>
     <a href="{{ url_for('admin.reservations') }}">Reservations</a>
+    <a href="{{ url_for('admin.notifications') }}">Notifications</a>
   </nav>
 
   <div class="stats">
@@ -20,6 +21,10 @@
     <a class="stat" href="{{ url_for('admin.reservations') }}">
       <span class="stat-number">{{ counts.reservations }}</span>
       <span class="stat-label">Reservations</span>
+    </a>
+    <a class="stat" href="{{ url_for('admin.notifications') }}">
+      <span class="stat-number">{{ counts.notifications }}</span>
+      <span class="stat-label">Notifications</span>
     </a>
   </div>
 {% endblock %}

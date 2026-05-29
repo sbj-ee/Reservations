@@ -4,6 +4,7 @@ from flask import (
 
 from . import models
 from .auth import login_required
+from .notifications import notify_reservation_event
 
 bp = Blueprint("web", __name__)
 
@@ -49,13 +50,14 @@ def reserve_widget(widget_id):
     if widget is None:
         abort(404)
     try:
-        models.create_reservation(
+        reservation_id = models.create_reservation(
             widget_id,
             g.user["id"],
             request.form.get("start_time"),
             request.form.get("end_time"),
             request.form.get("note"),
         )
+        notify_reservation_event("created", models.reservation_snapshot(reservation_id))
         flash("Reservation confirmed.")
     except (ValueError, models.OverlapError) as e:
         flash(str(e))
@@ -69,6 +71,32 @@ def my_reservations():
     return render_template("reservations/list.html", reservations=reservations)
 
 
+@bp.route("/reservations/<int:reservation_id>/edit", methods=("GET", "POST"))
+@login_required
+def edit_reservation(reservation_id):
+    reservation = models.get_reservation(reservation_id)
+    if reservation is None:
+        abort(404)
+    if reservation["user_id"] != g.user["id"]:
+        abort(403)
+    if request.method == "POST":
+        try:
+            models.update_reservation(
+                reservation_id,
+                request.form.get("start_time"),
+                request.form.get("end_time"),
+                request.form.get("note"),
+            )
+            notify_reservation_event(
+                "updated", models.reservation_snapshot(reservation_id)
+            )
+            flash("Reservation updated.")
+            return redirect(url_for("web.my_reservations"))
+        except (ValueError, models.OverlapError) as e:
+            flash(str(e))
+    return render_template("reservations/edit.html", reservation=reservation)
+
+
 @bp.route("/reservations/<int:reservation_id>/cancel", methods=("POST",))
 @login_required
 def cancel_reservation(reservation_id):
@@ -77,6 +105,8 @@ def cancel_reservation(reservation_id):
         abort(404)
     if reservation["user_id"] != g.user["id"]:
         abort(403)
+    snapshot = models.reservation_snapshot(reservation_id)
     models.delete_reservation(reservation_id)
+    notify_reservation_event("cancelled", snapshot)
     flash("Reservation cancelled.")
     return redirect(url_for("web.my_reservations"))

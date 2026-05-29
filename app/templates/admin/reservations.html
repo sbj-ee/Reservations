@@ -3,6 +3,13 @@
 {% block content %}
   <p><a href="{{ url_for('admin.dashboard') }}">&larr; Admin</a></p>
   <h1>Reservations</h1>
+
+  <form method="get" action="{{ url_for('admin.reservations_csv') }}" class="filter">
+    <label>From <input type="date" name="from"></label>
+    <label>To <input type="date" name="to"></label>
+    <button type="submit">Export CSV</button>
+  </form>
+
   {% if reservations %}
     <table class="reservations">
       <thead>

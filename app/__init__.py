@@ -8,6 +8,18 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-change-me"),
         DATABASE=os.path.join(app.instance_path, "reservations.sqlite"),
+        # Email (SMTP) notification settings — optional; logged when unset.
+        MAIL_SERVER=os.environ.get("MAIL_SERVER"),
+        MAIL_PORT=int(os.environ.get("MAIL_PORT", "587")),
+        MAIL_USERNAME=os.environ.get("MAIL_USERNAME"),
+        MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD"),
+        MAIL_FROM=os.environ.get("MAIL_FROM"),
+        MAIL_USE_TLS=os.environ.get("MAIL_USE_TLS", "true").lower()
+        in ("1", "true", "yes", "on"),
+        # SMS (Twilio) notification settings — optional; logged when unset.
+        TWILIO_ACCOUNT_SID=os.environ.get("TWILIO_ACCOUNT_SID"),
+        TWILIO_AUTH_TOKEN=os.environ.get("TWILIO_AUTH_TOKEN"),
+        TWILIO_FROM=os.environ.get("TWILIO_FROM"),
     )
 
     if test_config is not None:

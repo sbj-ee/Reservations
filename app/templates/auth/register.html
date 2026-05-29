@@ -9,6 +9,12 @@
     <label>Password
       <input type="password" name="password" required>
     </label>
+    <label>Email (optional, for notifications)
+      <input type="email" name="email">
+    </label>
+    <label>Phone (optional, for SMS notifications)
+      <input type="tel" name="phone" placeholder="+15551234567">
+    </label>
     <button type="submit">Register</button>
   </form>
   <p>Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>.</p>

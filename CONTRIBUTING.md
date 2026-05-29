@@ -71,7 +71,8 @@ Tests live in `tests/` and use a throwaway temporary database per test (see
 | `app/auth.py` | Register/login/logout + `login_required` / `admin_required` / `api_auth_required` |
 | `app/web.py` | Server-rendered UI routes |
 | `app/api.py` | JSON API routes under `/api` |
-| `app/admin.py` | Admin control panel routes under `/admin` |
+| `app/admin.py` | Admin panel routes under `/admin`, CSV export, notifications log |
+| `app/notifications.py` | Email (SMTP) + SMS (Twilio) channels with log/audit fallback |
 | `app/templates/`, `app/static/` | Jinja templates and CSS |
 | `tests/` | pytest suite |
 | `wsgi.py` | gunicorn entrypoint (`wsgi:app`) |
@@ -86,6 +87,10 @@ A few conventions worth knowing:
   `app/utils.parse_dt` for any new datetime input.
 - **API errors** return JSON `{"error": "..."}` with a meaningful status code
   (`400` bad input, `401` unauthenticated, `403` forbidden, `404` missing, `409` overlap).
+- **Notifications** fire from the route layer after a reservation is created/changed/cancelled
+  via `app/notifications.py`. Email/SMS providers are configured with env vars (`MAIL_*`,
+  `TWILIO_*`); when unset, messages are logged and recorded to the `notification` table, so
+  tests and local dev work without credentials. Dispatch must never raise into the request.
 
 ## Style
 

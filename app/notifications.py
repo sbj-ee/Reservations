@@ -1,0 +1,145 @@
+"""Reservation notifications.
+
+A small pluggable mechanism: each reservation event (created / updated / cancelled)
+is delivered to the owner over any channel they have contact info for. Email uses
+SMTP and SMS uses the Twilio REST API, both configured via environment variables
+(see ``create_app``). When a channel isn't configured, the message is logged and an
+audit row is still recorded, so the mechanism is fully exercisable without secrets.
+
+Every attempt is written to the ``notification`` table with a status:
+
+- ``sent``     delivered through a configured provider
+- ``failed``   provider configured but raised an error (details captured)
+- ``logged``   provider not configured; message written to the app log
+- ``skipped``  the owner has no contact info for any channel
+
+Dispatch never raises into the request flow — a notification problem must not
+prevent a booking from succeeding.
+"""
+
+import base64
+import smtplib
+import urllib.parse
+import urllib.request
+from email.message import EmailMessage
+
+from flask import current_app
+
+from . import models
+
+EVENT_VERB = {
+    "created": "created",
+    "updated": "updated",
+    "cancelled": "cancelled",
+}
+
+
+def email_configured():
+    c = current_app.config
+    return bool(c.get("MAIL_SERVER") and c.get("MAIL_FROM"))
+
+
+def sms_configured():
+    c = current_app.config
+    return all(
+        c.get(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM")
+    )
+
+
+def _build_message(event, snapshot):
+    verb = EVENT_VERB.get(event, event)
+    subject = f"Reservation {verb}: {snapshot['widget_name']}"
+    lines = [
+        f"Hi {snapshot['username']},",
+        "",
+        f"Your reservation for \"{snapshot['widget_name']}\" was {verb}.",
+        f"  When: {snapshot['start_time']} to {snapshot['end_time']}",
+    ]
+    if snapshot["note"]:
+        lines.append(f"  Note: {snapshot['note']}")
+    lines += ["", "— Widget Reservations"]
+    return subject, "\n".join(lines)
+
+
+def _send_email(to_addr, subject, body):
+    c = current_app.config
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = c["MAIL_FROM"]
+    msg["To"] = to_addr
+    msg.set_content(body)
+    with smtplib.SMTP(c["MAIL_SERVER"], c.get("MAIL_PORT", 587), timeout=10) as smtp:
+        if c.get("MAIL_USE_TLS", True):
+            smtp.starttls()
+        if c.get("MAIL_USERNAME"):
+            smtp.login(c["MAIL_USERNAME"], c.get("MAIL_PASSWORD") or "")
+        smtp.send_message(msg)
+
+
+def _send_sms(to_number, body):
+    c = current_app.config
+    sid = c["TWILIO_ACCOUNT_SID"]
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
+    data = urllib.parse.urlencode(
+        {"From": c["TWILIO_FROM"], "To": to_number, "Body": body}
+    ).encode()
+    token = base64.b64encode(f"{sid}:{c['TWILIO_AUTH_TOKEN']}".encode()).decode()
+    req = urllib.request.Request(url, data=data, method="POST")
+    req.add_header("Authorization", f"Basic {token}")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        resp.read()
+
+
+def _deliver(channel, recipient, configured, do_send, snapshot, event, subject, body):
+    """Run one channel: send if configured, else log; record the outcome either way."""
+    status, detail = "logged", ""
+    if configured:
+        try:
+            do_send()
+            status = "sent"
+        except Exception as e:  # provider error must not break the booking
+            status, detail = "failed", f"{type(e).__name__}: {e}"
+            current_app.logger.warning(
+                "%s notification to %s failed: %s", channel, recipient, detail
+            )
+    else:
+        current_app.logger.info(
+            "[notification:%s] to=%s subject=%r body=%r", channel, recipient, subject, body
+        )
+    models.record_notification(
+        snapshot["id"], snapshot["user_id"], event, channel, recipient,
+        subject, body, status, detail,
+    )
+
+
+def notify_reservation_event(event, snapshot):
+    """Notify the reservation owner of an event. ``snapshot`` is a reservation row
+    joined with widget name and owner contact info (see models.reservation_snapshot).
+    Never raises."""
+    if snapshot is None:
+        return
+    try:
+        subject, body = _build_message(event, snapshot)
+        delivered = False
+        if snapshot["email"]:
+            _deliver(
+                "email", snapshot["email"], email_configured(),
+                lambda: _send_email(snapshot["email"], subject, body),
+                snapshot, event, subject, body,
+            )
+            delivered = True
+        if snapshot["phone"]:
+            _deliver(
+                "sms", snapshot["phone"], sms_configured(),
+                lambda: _send_sms(snapshot["phone"], body),
+                snapshot, event, subject, body,
+            )
+            delivered = True
+        if not delivered:
+            models.record_notification(
+                snapshot["id"], snapshot["user_id"], event, "none", "",
+                subject, body, "skipped", "owner has no email or phone on file",
+            )
+    except Exception as e:
+        current_app.logger.exception("notification dispatch failed: %s", e)

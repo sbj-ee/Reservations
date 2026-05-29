@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Edit reservation{% endblock %}
+{% block content %}
+  <p><a href="{{ url_for('web.my_reservations') }}">&larr; My reservations</a></p>
+  <h1>Edit reservation</h1>
+  <form method="post" class="card">
+    <label>Start
+      <input type="datetime-local" name="start_time"
+             value="{{ reservation['start_time'].replace(' ', 'T') }}" required>
+    </label>
+    <label>End
+      <input type="datetime-local" name="end_time"
+             value="{{ reservation['end_time'].replace(' ', 'T') }}" required>
+    </label>
+    <label>Note (optional)
+      <input name="note" value="{{ reservation['note'] }}">
+    </label>
+    <button type="submit">Save changes</button>
+  </form>
+{% endblock %}

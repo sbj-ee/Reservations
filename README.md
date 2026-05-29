@@ -21,6 +21,8 @@ server-rendered web UI and a JSON API, and is served with **gunicorn**.
 - Web UI (Jinja templates) **and** a JSON API under `/api`
 - API accepts either the session cookie or HTTP Basic auth
 - Admin control panel at `/admin` to manage users, widgets, and reservations
+- CSV export of reservations (optionally filtered by date / widget / user)
+- Email + SMS notifications when a reservation is created, changed, or cancelled
 
 ## Setup
 
@@ -72,9 +74,48 @@ flask --app app set-admin bob --remove          # revoke it
 
 ![Admin control panel: the user management page](docs/admin-users.png)
 
+## Reports
+
+Admins can export reservations as CSV from **Admin → Reservations → Export CSV**, or
+directly:
+
+```
+GET /admin/reports/reservations.csv?from=2026-06-01&to=2026-06-30&widget_id=1&user_id=2
+```
+
+All query parameters are optional. `from`/`to` are `YYYY-MM-DD` dates filtered against the
+reservation start time (inclusive). The file has one row per reservation with the widget,
+user, time range, note, and creation timestamp.
+
+## Notifications
+
+When a reservation is **created, changed, or cancelled**, the owner is notified on every
+channel they have contact info for (email and/or SMS — captured optionally at registration).
+
+The mechanism is pluggable and configured entirely through environment variables. When a
+channel isn't configured, the message is written to the application log and an audit row is
+still recorded, so the feature works out of the box without any credentials. Every attempt
+(`sent` / `failed` / `logged` / `skipped`) is visible to admins at **Admin → Notifications**.
+A failed send never blocks the booking.
+
+| Variable | Channel | Notes |
+| --- | --- | --- |
+| `MAIL_SERVER`, `MAIL_FROM` | Email | Required to enable email (SMTP) |
+| `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_USE_TLS` | Email | Optional (port defaults to 587, TLS on) |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | SMS | All three required to enable SMS (Twilio) |
+
+```bash
+# example: enable real email delivery
+MAIL_SERVER=smtp.example.com MAIL_FROM=reservations@example.com \
+MAIL_USERNAME=apikey MAIL_PASSWORD=secret \
+  gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
+```
+
+![Admin notifications audit log](docs/admin-notifications.png)
+
 ## API
 
-`POST`/`DELETE` endpoints require authentication (session cookie or HTTP Basic).
+`POST`/`PUT`/`DELETE` endpoints require authentication (session cookie or HTTP Basic).
 `GET` endpoints for widgets are public.
 
 | Method | Path | Auth | Description |
@@ -85,6 +126,7 @@ flask --app app set-admin bob --remove          # revoke it
 | GET | `/api/widgets/<id>/reservations` | no | List a widget's reservations |
 | POST | `/api/widgets/<id>/reservations` | yes | Reserve (`{start_time, end_time, note}`) — `409` on overlap |
 | GET | `/api/reservations` | yes | List the current user's reservations |
+| PUT | `/api/reservations/<id>` | yes | Change your reservation (`{start_time, end_time, note}`) — `409` on overlap |
 | DELETE | `/api/reservations/<id>` | yes | Cancel your reservation |
 
 Times accept `YYYY-MM-DDTHH:MM` or `YYYY-MM-DD HH:MM` and are stored/returned as
@@ -123,7 +165,8 @@ app/
   auth.py          register/login/logout + login_required / admin_required / api_auth_required
   web.py           server-rendered UI routes
   api.py           JSON API routes (/api)
-  admin.py         admin control panel routes (/admin)
+  admin.py         admin control panel routes (/admin) + CSV export + notifications log
+  notifications.py email (SMTP) + SMS (Twilio) channels with log/audit fallback
   templates/       Jinja templates
   static/style.css styling
 tests/             pytest suite

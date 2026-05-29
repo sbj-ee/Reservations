@@ -66,6 +66,19 @@ def get_reservation(reservation_id):
     ).fetchone()
 
 
+def _has_overlap(db, widget_id, start, end, exclude_id=None):
+    # Two intervals overlap iff existing.start < new.end AND new.start < existing.end.
+    sql = (
+        "SELECT 1 FROM reservation "
+        "WHERE widget_id = ? AND start_time < ? AND ? < end_time"
+    )
+    params = [widget_id, end, start]
+    if exclude_id is not None:
+        sql += " AND id != ?"
+        params.append(exclude_id)
+    return db.execute(sql + " LIMIT 1", params).fetchone() is not None
+
+
 def create_reservation(widget_id, user_id, start_time, end_time, note=""):
     """Create a reservation, rejecting overlaps for the same widget.
 
@@ -80,14 +93,7 @@ def create_reservation(widget_id, user_id, start_time, end_time, note=""):
         raise ValueError("end time must be after start time")
 
     db = get_db()
-    # Two intervals overlap iff existing.start < new.end AND new.start < existing.end.
-    conflict = db.execute(
-        """SELECT 1 FROM reservation
-            WHERE widget_id = ? AND start_time < ? AND ? < end_time
-            LIMIT 1""",
-        (widget_id, end, start),
-    ).fetchone()
-    if conflict is not None:
+    if _has_overlap(db, widget_id, start, end):
         raise OverlapError("widget is already reserved for that time range")
 
     cur = db.execute(
@@ -99,6 +105,31 @@ def create_reservation(widget_id, user_id, start_time, end_time, note=""):
     return cur.lastrowid
 
 
+def update_reservation(reservation_id, start_time, end_time, note=""):
+    """Change a reservation's time range / note, rejecting overlaps with others.
+
+    Raises ValueError for bad input and OverlapError on a time conflict.
+    """
+    reservation = get_reservation(reservation_id)
+    if reservation is None:
+        raise ValueError("reservation not found")
+
+    start = parse_dt(start_time)
+    end = parse_dt(end_time)
+    if end <= start:
+        raise ValueError("end time must be after start time")
+
+    db = get_db()
+    if _has_overlap(db, reservation["widget_id"], start, end, exclude_id=reservation_id):
+        raise OverlapError("widget is already reserved for that time range")
+
+    db.execute(
+        "UPDATE reservation SET start_time = ?, end_time = ?, note = ? WHERE id = ?",
+        (start, end, (note or "").strip(), reservation_id),
+    )
+    db.commit()
+
+
 def delete_reservation(reservation_id):
     db = get_db()
     db.execute("DELETE FROM reservation WHERE id = ?", (reservation_id,))
@@ -106,14 +137,37 @@ def delete_reservation(reservation_id):
 
 
 def list_all_reservations():
-    db = get_db()
-    return db.execute(
+    return query_reservations()
+
+
+def query_reservations(date_from=None, date_to=None, widget_id=None, user_id=None):
+    """All reservations (joined with widget + user), with optional filters.
+
+    ``date_from`` / ``date_to`` are 'YYYY-MM-DD' dates filtered against start_time
+    (inclusive). Invalid dates are ignored rather than raising.
+    """
+    sql = [
         """SELECT r.*, w.name AS widget_name, u.username
              FROM reservation r
              JOIN widget w ON w.id = r.widget_id
              JOIN user u ON u.id = r.user_id
-         ORDER BY r.start_time"""
-    ).fetchall()
+            WHERE 1 = 1"""
+    ]
+    params = []
+    if date_from and len((date_from or "").strip()) == 10:
+        sql.append("AND r.start_time >= ?")
+        params.append(date_from.strip() + " 00:00")
+    if date_to and len((date_to or "").strip()) == 10:
+        sql.append("AND r.start_time <= ?")
+        params.append(date_to.strip() + " 23:59")
+    if widget_id:
+        sql.append("AND r.widget_id = ?")
+        params.append(widget_id)
+    if user_id:
+        sql.append("AND r.user_id = ?")
+        params.append(user_id)
+    sql.append("ORDER BY r.start_time")
+    return get_db().execute("\n".join(sql), params).fetchall()
 
 
 def update_widget(widget_id, name, description):
@@ -177,4 +231,44 @@ def counts():
         "users": db.execute("SELECT COUNT(*) AS n FROM user").fetchone()["n"],
         "widgets": db.execute("SELECT COUNT(*) AS n FROM widget").fetchone()["n"],
         "reservations": db.execute("SELECT COUNT(*) AS n FROM reservation").fetchone()["n"],
+        "notifications": db.execute("SELECT COUNT(*) AS n FROM notification").fetchone()["n"],
     }
+
+
+# --- Notifications ---------------------------------------------------------
+
+def reservation_snapshot(reservation_id):
+    """A reservation joined with its widget name and the owner's contact info.
+
+    Used to build notification messages; capture it before deleting a reservation.
+    """
+    db = get_db()
+    return db.execute(
+        """SELECT r.*, w.name AS widget_name,
+                  u.username, u.email, u.phone
+             FROM reservation r
+             JOIN widget w ON w.id = r.widget_id
+             JOIN user u ON u.id = r.user_id
+            WHERE r.id = ?""",
+        (reservation_id,),
+    ).fetchone()
+
+
+def record_notification(
+    reservation_id, user_id, event, channel, recipient, subject, body, status, detail=""
+):
+    db = get_db()
+    db.execute(
+        """INSERT INTO notification
+             (reservation_id, user_id, event, channel, recipient, subject, body, status, detail)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (reservation_id, user_id, event, channel, recipient, subject, body, status, detail),
+    )
+    db.commit()
+
+
+def list_notifications(limit=100):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM notification ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
