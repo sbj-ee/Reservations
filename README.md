@@ -1,9 +1,17 @@
 # Widget Reservations
 
+![Python](https://img.shields.io/badge/python-3.12-3776AB.svg?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.x-000000.svg?logo=flask&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-3-003B57.svg?logo=sqlite&logoColor=white)
+![Gunicorn](https://img.shields.io/badge/server-gunicorn-499848.svg?logo=gunicorn&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC.svg?logo=pytest&logoColor=white)
+
 A small reservation system built with **Python, Flask, and SQLite**. Users register and
 log in, browse **widgets** (any bookable resource), and reserve a widget for a time range.
 Overlapping reservations for the same widget are rejected. It ships with both a
 server-rendered web UI and a JSON API, and is served with **gunicorn**.
+
+![Widget detail page showing the reservations table and the reserve form](docs/screenshot.png)
 
 ## Features
 
