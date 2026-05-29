@@ -21,6 +21,7 @@ server-rendered web UI and a JSON API, and is served with **gunicorn**.
 - Web UI (Jinja templates) **and** a JSON API under `/api`
 - API accepts either the session cookie or HTTP Basic auth
 - Admin control panel at `/admin` to manage users, widgets, and reservations
+- Self-service account page (`/account`): update your email/phone and change your password
 - CSV export of reservations (optionally filtered by date / widget / user)
 - Email + SMS notifications when a reservation is created, changed, or cancelled
 
@@ -60,9 +61,11 @@ flask --app app run --debug
 
 ## Admin
 
-Admins get a control panel at `/admin` to manage **users** (grant/revoke admin, delete),
-**widgets** (edit, delete), and **reservations** (delete any entry). The panel and its
-nav link are visible only to admin users.
+Admins get a control panel at `/admin` to manage **users** (edit username/email/phone,
+reset password, grant/revoke admin, delete), **widgets** (edit, delete), and
+**reservations** (delete any entry). The panel and its nav link are visible only to admin
+users. Every signed-in user can also manage their own email, phone, and password from the
+**Account** page (`/account`).
 
 Create the first admin from the command line, then log in normally:
 

@@ -1,3 +1,5 @@
+from werkzeug.security import generate_password_hash
+
 from .db import get_db
 from .utils import parse_dt
 
@@ -212,6 +214,44 @@ def set_user_admin(user_id, is_admin):
     db.execute(
         "UPDATE user SET is_admin = ? WHERE id = ?",
         (1 if is_admin else 0, user_id),
+    )
+    db.commit()
+
+
+def update_user_account(user_id, username, email, phone):
+    """Admin edit of a user's username + contact info. Raises ValueError on a
+    blank or already-taken username."""
+    username = (username or "").strip()
+    if not username:
+        raise ValueError("username is required")
+    db = get_db()
+    try:
+        db.execute(
+            "UPDATE user SET username = ?, email = ?, phone = ? WHERE id = ?",
+            (username, (email or "").strip() or None, (phone or "").strip() or None, user_id),
+        )
+        db.commit()
+    except db.IntegrityError:
+        raise ValueError("that username is already taken")
+
+
+def update_contact(user_id, email, phone):
+    """Self-service update of a user's own email / phone."""
+    db = get_db()
+    db.execute(
+        "UPDATE user SET email = ?, phone = ? WHERE id = ?",
+        ((email or "").strip() or None, (phone or "").strip() or None, user_id),
+    )
+    db.commit()
+
+
+def set_password(user_id, raw_password):
+    if not raw_password:
+        raise ValueError("password is required")
+    db = get_db()
+    db.execute(
+        "UPDATE user SET password_hash = ? WHERE id = ?",
+        (generate_password_hash(raw_password), user_id),
     )
     db.commit()
 

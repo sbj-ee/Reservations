@@ -1,6 +1,7 @@
 from flask import (
     Blueprint, abort, flash, g, redirect, render_template, request, url_for
 )
+from werkzeug.security import check_password_hash
 
 from . import models
 from .auth import login_required
@@ -69,6 +70,34 @@ def reserve_widget(widget_id):
 def my_reservations():
     reservations = models.list_reservations_for_user(g.user["id"])
     return render_template("reservations/list.html", reservations=reservations)
+
+
+@bp.route("/account", methods=("GET", "POST"))
+@login_required
+def account():
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "profile":
+            models.update_contact(
+                g.user["id"], request.form.get("email"), request.form.get("phone")
+            )
+            flash("Contact details updated.")
+            return redirect(url_for("web.account"))
+        if action == "password":
+            current = request.form.get("current_password") or ""
+            new = request.form.get("new_password") or ""
+            confirm = request.form.get("confirm_password") or ""
+            if not check_password_hash(g.user["password_hash"], current):
+                flash("Current password is incorrect.")
+            elif not new:
+                flash("New password is required.")
+            elif new != confirm:
+                flash("New passwords do not match.")
+            else:
+                models.set_password(g.user["id"], new)
+                flash("Password changed.")
+                return redirect(url_for("web.account"))
+    return render_template("account.html")
 
 
 @bp.route("/reservations/<int:reservation_id>/edit", methods=("GET", "POST"))

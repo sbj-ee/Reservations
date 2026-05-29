@@ -5,17 +5,20 @@
   <h1>Users</h1>
   <table class="reservations">
     <thead>
-      <tr><th>ID</th><th>Username</th><th>Admin</th><th>Reservations</th><th>Joined</th><th>Actions</th></tr>
+      <tr><th>ID</th><th>Username</th><th>Email</th><th>Phone</th><th>Admin</th><th>Reservations</th><th>Joined</th><th>Actions</th></tr>
     </thead>
     <tbody>
       {% for u in users %}
         <tr>
           <td>{{ u['id'] }}</td>
           <td>{{ u['username'] }}{% if u['id'] == g.user['id'] %} <span class="muted">(you)</span>{% endif %}</td>
+          <td>{{ u['email'] or '—' }}</td>
+          <td>{{ u['phone'] or '—' }}</td>
           <td>{% if u['is_admin'] %}<span class="badge">admin</span>{% else %}&mdash;{% endif %}</td>
           <td>{{ u['reservation_count'] }}</td>
           <td>{{ u['created_at'] }}</td>
           <td class="actions">
+            <a href="{{ url_for('admin.edit_user', user_id=u['id']) }}">Edit</a>
             {% if u['id'] != g.user['id'] %}
               <form method="post" action="{{ url_for('admin.toggle_admin', user_id=u['id']) }}">
                 <button type="submit" class="link-button">{{ 'Revoke admin' if u['is_admin'] else 'Make admin' }}</button>
@@ -24,8 +27,6 @@
                     onsubmit="return confirm('Delete {{ u['username'] }} and all their reservations?');">
                 <button type="submit" class="link-button danger">Delete</button>
               </form>
-            {% else %}
-              <span class="muted">&mdash;</span>
             {% endif %}
           </td>
         </tr>

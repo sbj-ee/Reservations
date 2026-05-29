@@ -74,6 +74,18 @@ def is_admin(app):
 
 
 @pytest.fixture
+def user_row(app):
+    def _user_row(username):
+        with app.app_context():
+            r = get_db().execute(
+                "SELECT * FROM user WHERE username = ?", (username,)
+            ).fetchone()
+            return dict(r) if r else None
+
+    return _user_row
+
+
+@pytest.fixture
 def notifications(app):
     def _notifications():
         with app.app_context():

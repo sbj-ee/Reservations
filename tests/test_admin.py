@@ -95,6 +95,63 @@ def test_admin_cannot_delete_self(client, auth, make_admin):
     assert b"cannot delete your own account" in resp.data
 
 
+def test_admin_edit_user_contact_and_username(client, auth, make_admin, user_row):
+    auth.register(username="alice")  # user 1
+    make_admin("alice")
+    auth.logout()
+    auth.register(username="bob", password="secret")  # user 2
+    auth.logout()
+    auth.login(username="alice")
+    resp = client.post(
+        "/admin/users/2/edit",
+        data={"username": "bobby", "email": "bob@example.com", "phone": "+15550002222"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    row = user_row("bobby")
+    assert row is not None
+    assert row["email"] == "bob@example.com"
+    assert row["phone"] == "+15550002222"
+    assert user_row("bob") is None  # renamed
+
+
+def test_admin_edit_user_duplicate_username_rejected(client, auth, make_admin, user_row):
+    auth.register(username="alice")
+    make_admin("alice")
+    auth.logout()
+    auth.register(username="bob", password="secret")
+    auth.logout()
+    auth.login(username="alice")
+    resp = client.post(
+        "/admin/users/2/edit", data={"username": "alice", "email": "", "phone": ""}
+    )
+    assert b"already taken" in resp.data
+    assert user_row("bob") is not None  # unchanged
+
+
+def test_admin_reset_user_password(client, auth, make_admin):
+    auth.register(username="alice")
+    make_admin("alice")
+    auth.logout()
+    auth.register(username="bob", password="secret")
+    auth.logout()
+    auth.login(username="alice")
+    client.post(
+        "/admin/users/2/edit",
+        data={"username": "bob", "email": "", "phone": "", "new_password": "resetpw"},
+        follow_redirects=True,
+    )
+    auth.logout()
+    assert auth.login(username="bob", password="resetpw").status_code == 302
+    auth.logout()
+    assert b"Incorrect" in auth.login(username="bob", password="secret").data
+
+
+def test_admin_edit_user_forbidden_for_normal_user(client, auth):
+    auth.register()  # normal user
+    assert client.get("/admin/users/1/edit").status_code == 403
+
+
 def test_create_admin_cli(app):
     runner = app.test_cli_runner()
     result = runner.invoke(args=["create-admin", "root", "rootpw"])

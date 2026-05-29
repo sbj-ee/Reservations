@@ -26,6 +26,36 @@ def users():
     return render_template("admin/users.html", users=models.list_users())
 
 
+@bp.route("/users/<int:user_id>/edit", methods=("GET", "POST"))
+@admin_required
+def edit_user(user_id):
+    user = models.get_user(user_id)
+    if user is None:
+        abort(404)
+    if request.method == "POST":
+        try:
+            models.update_user_account(
+                user_id,
+                request.form.get("username"),
+                request.form.get("email"),
+                request.form.get("phone"),
+            )
+            new_password = (request.form.get("new_password") or "").strip()
+            if new_password:
+                models.set_password(user_id, new_password)
+            flash("User updated.")
+            return redirect(url_for("admin.users"))
+        except ValueError as e:
+            flash(str(e))
+            return render_template("admin/user_edit.html", user=user, values=request.form)
+    values = {
+        "username": user["username"],
+        "email": user["email"] or "",
+        "phone": user["phone"] or "",
+    }
+    return render_template("admin/user_edit.html", user=user, values=values)
+
+
 @bp.route("/users/<int:user_id>/toggle-admin", methods=("POST",))
 @admin_required
 def toggle_admin(user_id):
