@@ -128,7 +128,9 @@ def delete_widget(widget_id):
 @admin_required
 def reservations():
     return render_template(
-        "admin/reservations.html", reservations=models.list_all_reservations()
+        "admin/reservations.html",
+        reservations=models.list_all_reservations(),
+        widgets=models.list_widgets(),
     )
 
 

@@ -6,6 +6,14 @@
   <p class="muted">Times below are shown in your local time zone; the CSV export uses UTC.</p>
 
   <form method="get" action="{{ url_for('admin.reservations_csv') }}" class="filter">
+    <label>Widget
+      <select name="widget_id">
+        <option value="">All widgets</option>
+        {% for w in widgets %}
+          <option value="{{ w['id'] }}">{{ w['name'] }}</option>
+        {% endfor %}
+      </select>
+    </label>
     <label>From <input type="date" name="from"></label>
     <label>To <input type="date" name="to"></label>
     <button type="submit">Export CSV</button>

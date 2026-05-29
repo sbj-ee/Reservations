@@ -5,7 +5,12 @@
   <h1>{{ widget['name'] }}</h1>
   {% if widget['description'] %}<p>{{ widget['description'] }}</p>{% endif %}
 
-  <h2>Reservations</h2>
+  <div class="page-head">
+    <h2>Reservations</h2>
+    {% if g.user and g.user['is_admin'] %}
+      <a class="button" href="{{ url_for('admin.reservations_csv', widget_id=widget['id']) }}">Export CSV</a>
+    {% endif %}
+  </div>
   {% if reservations %}
     <table class="reservations">
       <thead><tr><th>Start</th><th>End</th><th>By</th><th>Note</th></tr></thead>

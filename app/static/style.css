@@ -75,12 +75,13 @@ h2 { font-size: 1.2rem; margin-top: 2rem; }
 }
 
 label { display: flex; flex-direction: column; font-size: 0.9rem; gap: 0.25rem; }
-input, textarea {
+input, textarea, select {
   font: inherit;
   padding: 0.5rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   width: 100%;
+  background: var(--card);
 }
 
 button, .button {
@@ -193,7 +194,7 @@ td.actions form { margin: 0; }
   margin: 0 0 1.25rem;
 }
 .filter label { font-size: 0.85rem; }
-.filter input { width: auto; }
+.filter input, .filter select { width: auto; }
 
 .status {
   display: inline-block;

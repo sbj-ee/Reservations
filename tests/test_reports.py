@@ -37,6 +37,22 @@ def test_csv_export_contents(client, auth, make_admin):
     assert "Room A" in text and "alice" in text
 
 
+def test_csv_widget_filter(client, auth, make_admin):
+    _seed(client, auth, make_admin)  # creates widget "Room A" (id 1) with 2 reservations
+    # add a second widget with one reservation
+    other = client.post("/api/widgets", json={"name": "Room B"}).get_json()["id"]
+    client.post(
+        f"/api/widgets/{other}/reservations",
+        json={"start_time": "2026-06-02T09:00", "end_time": "2026-06-02T10:00", "note": "B only"},
+    )
+    resp = client.get(f"/admin/reports/reservations.csv?widget_id={other}")
+    text = resp.get_data(as_text=True)
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    assert len(lines) == 2  # header + only Room B's reservation
+    assert "Room B" in text and "B only" in text
+    assert "Room A" not in text
+
+
 def test_csv_date_filter(client, auth, make_admin):
     _seed(client, auth, make_admin)
     resp = client.get("/admin/reports/reservations.csv?from=2026-07-01&to=2026-07-31")

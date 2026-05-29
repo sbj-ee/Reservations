@@ -79,8 +79,13 @@ flask --app app set-admin bob --remove          # revoke it
 
 ## Reports
 
-Admins can export reservations as CSV from **Admin → Reservations → Export CSV**, or
-directly:
+Admins can export reservations as CSV in a few places:
+
+- **Per widget:** an **Export CSV** button on each widget's detail page (exports just that
+  widget's reservations).
+- **Filtered:** **Admin → Reservations** has a filter form (widget + date range) whose
+  **Export CSV** button downloads the matching rows.
+- **Directly:**
 
 ```
 GET /admin/reports/reservations.csv?from=2026-06-01&to=2026-06-30&widget_id=1&user_id=2
