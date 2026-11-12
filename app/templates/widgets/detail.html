@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% import "reservations/_picker_assets.html" as picker %}
+{% block head %}{{ picker.head() }}{% endblock %}
+{% block scripts %}{% if g.user %}{{ picker.scripts() }}{% endif %}{% endblock %}
 {% block title %}{{ widget['name'] }}{% endblock %}
 {% block content %}
   <p><a href="{{ url_for('web.list_widgets') }}">&larr; All widgets</a></p>
@@ -31,14 +34,10 @@
 
   {% if g.user %}
     <h2>Reserve this widget</h2>
-    <p class="muted">Enter times in your local time zone — they're stored and compared in UTC.</p>
-    <form method="post" action="{{ url_for('web.reserve_widget', widget_id=widget['id']) }}" class="card">
-      <label>Start
-        <input type="datetime-local" name="start_time" class="js-local-dt" required>
-      </label>
-      <label>End
-        <input type="datetime-local" name="end_time" class="js-local-dt" required>
-      </label>
+    <p class="muted">Times are in your local time zone<span class="js-tz-name"></span>. Days with existing bookings are marked with a dot.</p>
+    <form method="post" action="{{ url_for('web.reserve_widget', widget_id=widget['id']) }}"
+          class="card js-reserve-form" data-booked='{{ booked|tojson }}'>
+      {% include "reservations/_time_fields.html" %}
       <label>Note (optional)
         <input name="note">
       </label>

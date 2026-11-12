@@ -1,18 +1,15 @@
 {% extends "base.html" %}
+{% import "reservations/_picker_assets.html" as picker %}
+{% block head %}{{ picker.head() }}{% endblock %}
+{% block scripts %}{{ picker.scripts() }}{% endblock %}
 {% block title %}Edit reservation{% endblock %}
 {% block content %}
   <p><a href="{{ url_for('web.my_reservations') }}">&larr; My reservations</a></p>
   <h1>Edit reservation</h1>
-  <p class="muted">Times are shown in your local time zone and stored in UTC.</p>
-  <form method="post" class="card">
-    <label>Start
-      <input type="datetime-local" name="start_time" class="js-local-dt js-utc-input"
-             value="{{ reservation['start_time'].replace(' ', 'T') }}" required>
-    </label>
-    <label>End
-      <input type="datetime-local" name="end_time" class="js-local-dt js-utc-input"
-             value="{{ reservation['end_time'].replace(' ', 'T') }}" required>
-    </label>
+  <p class="muted">Times are in your local time zone<span class="js-tz-name"></span>.</p>
+  <form method="post" class="card js-reserve-form" data-booked='{{ booked|tojson }}'
+        data-start="{{ reservation['start_time'] }}" data-end="{{ reservation['end_time'] }}">
+    {% include "reservations/_time_fields.html" %}
     <label>Note (optional)
       <input name="note" value="{{ reservation['note'] }}">
     </label>

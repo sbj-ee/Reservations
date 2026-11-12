@@ -1,0 +1,7 @@
+{% macro head() %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css') }}">
+{% endmacro %}
+{% macro scripts() %}
+  <script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='reserve.js') }}" defer></script>
+{% endmacro %}

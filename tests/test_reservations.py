@@ -125,3 +125,57 @@ def test_ui_overlap_shows_flash(client, auth):
         follow_redirects=True,
     )
     assert b"already reserved" in resp.data
+
+
+def _booked_attr(html):
+    import html as html_mod, json, re
+    m = re.search(r"data-booked='([^']*)'", html)
+    assert m, "form should carry data-booked"
+    return json.loads(html_mod.unescape(m.group(1)))
+
+
+def test_widget_detail_exposes_booked_ranges_to_picker(client, auth):
+    widget_id = _make_widget(client, auth)
+    client.post(
+        f"/api/widgets/{widget_id}/reservations",
+        json={"start_time": "2026-06-01T09:00", "end_time": "2026-06-01T10:00"},
+    )
+    html = client.get(f"/widgets/{widget_id}").get_data(as_text=True)
+    assert "flatpickr.min.js" in html and "reserve.js" in html
+    assert _booked_attr(html) == [
+        {"start": "2026-06-01 09:00", "end": "2026-06-01 10:00", "user": "alice"}
+    ]
+
+
+def test_edit_page_excludes_own_reservation_from_booked(client, auth):
+    widget_id = _make_widget(client, auth)
+    own = client.post(
+        f"/api/widgets/{widget_id}/reservations",
+        json={"start_time": "2026-06-01T09:00", "end_time": "2026-06-01T10:00"},
+    ).get_json()["id"]
+    client.post(
+        f"/api/widgets/{widget_id}/reservations",
+        json={"start_time": "2026-06-01T11:00", "end_time": "2026-06-01T12:00"},
+    )
+    html = client.get(f"/reservations/{own}/edit").get_data(as_text=True)
+    assert 'data-start="2026-06-01 09:00"' in html
+    assert 'data-end="2026-06-01 10:00"' in html
+    assert [b["start"] for b in _booked_attr(html)] == ["2026-06-01 11:00"]
+
+
+def test_web_form_accepts_picker_utc_values(client, auth):
+    """The picker submits start/end as naive UTC 'YYYY-MM-DDTHH:MM'; overlap is still
+    enforced server-side."""
+    widget_id = _make_widget(client, auth)
+    form = {"start_time": "2026-06-01T14:00", "end_time": "2026-06-01T15:30", "note": ""}
+    client.post(f"/widgets/{widget_id}/reserve", data=form)
+    rows = client.get(f"/api/widgets/{widget_id}/reservations").get_json()
+    assert [(r["start_time"], r["end_time"]) for r in rows] == [
+        ("2026-06-01 14:00", "2026-06-01 15:30")
+    ]
+    resp = client.post(
+        f"/widgets/{widget_id}/reserve",
+        data={"start_time": "2026-06-01T15:00", "end_time": "2026-06-01T16:00"},
+        follow_redirects=True,
+    )
+    assert b"already reserved" in resp.data
