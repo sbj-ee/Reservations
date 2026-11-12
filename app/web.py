@@ -10,6 +10,17 @@ from .notifications import notify_reservation_event
 bp = Blueprint("web", __name__)
 
 
+def _booked_ranges(widget_id, exclude_id=None):
+    """A widget's existing bookings (UTC) for the client-side date picker, which
+    uses them to mark booked days and warn about conflicts before submitting.
+    The server-side overlap check in models remains the source of truth."""
+    return [
+        {"start": r["start_time"], "end": r["end_time"], "user": r["username"]}
+        for r in models.list_reservations_for_widget(widget_id)
+        if r["id"] != exclude_id
+    ]
+
+
 @bp.route("/widgets")
 def list_widgets():
     return render_template("widgets/list.html", widgets=models.list_widgets())
@@ -40,7 +51,10 @@ def widget_detail(widget_id):
         abort(404)
     reservations = models.list_reservations_for_widget(widget_id)
     return render_template(
-        "widgets/detail.html", widget=widget, reservations=reservations
+        "widgets/detail.html",
+        widget=widget,
+        reservations=reservations,
+        booked=_booked_ranges(widget_id),
     )
 
 
@@ -126,7 +140,11 @@ def edit_reservation(reservation_id):
             return redirect(url_for("web.my_reservations"))
         except (ValueError, models.OverlapError) as e:
             flash(str(e))
-    return render_template("reservations/edit.html", reservation=reservation)
+    return render_template(
+        "reservations/edit.html",
+        reservation=reservation,
+        booked=_booked_ranges(reservation["widget_id"], exclude_id=reservation_id),
+    )
 
 
 @bp.route("/reservations/<int:reservation_id>/cancel", methods=("POST",))

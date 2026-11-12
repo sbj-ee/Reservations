@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Reservations{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  {% block head %}{% endblock %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -43,5 +44,6 @@
     {% block content %}{% endblock %}
   </main>
   <script src="{{ url_for('static', filename='tz.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

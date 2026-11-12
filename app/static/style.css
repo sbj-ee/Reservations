@@ -224,3 +224,30 @@ td.actions form { margin: 0; }
 .status-logged { background: #e0e7ff; color: #3730a3; }
 .status-skipped { background: #f1f5f9; color: #475569; }
 .status-failed { background: #fee2e2; color: #991b1b; }
+
+/* --- Reservation time picker (flatpickr + duration) --- */
+.hint { margin: -0.25rem 0 0; font-size: 0.85rem; color: var(--muted); min-height: 1.3em; }
+.conflict {
+  padding: 0.6rem 0.8rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  font-size: 0.9rem;
+}
+.conflict ul { margin: 0.25rem 0 0; padding-left: 1.2rem; }
+button:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+.flatpickr-day.selected, .flatpickr-day.selected:hover,
+.flatpickr-day.selected:focus { background: var(--accent); border-color: var(--accent); }
+.flatpickr-day.has-booking { position: relative; }
+.flatpickr-day.has-booking::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #d97706;
+}
