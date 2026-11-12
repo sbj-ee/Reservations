@@ -6,7 +6,9 @@ from flask import Flask, redirect, url_for
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-change-me"),
+        # Unset -> a random key persisted in the instance folder (see security.py),
+        # never a guessable default.
+        SECRET_KEY=os.environ.get("SECRET_KEY"),
         DATABASE=os.path.join(app.instance_path, "reservations.sqlite"),
         # Email (SMTP) notification settings — optional; logged when unset.
         MAIL_SERVER=os.environ.get("MAIL_SERVER"),
@@ -27,8 +29,9 @@ def create_app(test_config=None):
 
     os.makedirs(app.instance_path, exist_ok=True)
 
-    from . import db, auth, web, api, admin
+    from . import db, auth, web, api, admin, security
 
+    security.init_app(app)
     db.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(web.bp)
