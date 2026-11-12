@@ -15,6 +15,7 @@
         <img class="logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="28" height="28">
         <span>Widget Reservations</span>
       </a>
+      <span class="version" title="Version {{ app_version }}{% if app_build %}, commit {{ app_build }}{% endif %}">v{{ app_version }}{% if app_build %} · {{ app_build }}{% endif %}</span>
       <span class="spacer"></span>
       <a href="{{ url_for('web.list_widgets') }}">Widgets</a>
       {% if g.user %}
