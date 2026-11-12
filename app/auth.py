@@ -222,7 +222,9 @@ def login():
     return render_template("auth/login.html")
 
 
-@bp.route("/logout")
+# POST-only (and so CSRF-protected): a GET logout lets any third-party page
+# log users out with an <img> tag.
+@bp.route("/logout", methods=("POST",))
 def logout():
     session.clear()
     return redirect(url_for("web.list_widgets"))

@@ -146,3 +146,32 @@ def test_every_post_form_has_token():
             if "csrf_token()" not in following:
                 missing.append(f"{path.relative_to(templates)}:{text.count(chr(10), 0, m.start()) + 1}")
     assert not missing, f"POST forms without csrf_token: {missing}"
+
+
+# --- Logout ----------------------------------------------------------------
+
+def _logged_in(client):
+    return client.get("/auth/login").status_code == 302  # login page redirects when authed
+
+
+def test_logout_get_is_not_allowed(client, auth):
+    auth.register()
+    assert client.get("/auth/logout").status_code == 405
+    assert _logged_in(client)
+
+
+def test_logout_post_logs_out(client, auth):
+    auth.register()
+    resp = client.post("/auth/logout")
+    assert resp.status_code == 302
+    assert not _logged_in(client)
+
+
+def test_logout_requires_csrf_token(csrf_client):
+    _register(csrf_client)
+    assert csrf_client.post("/auth/logout").status_code == 400
+    assert _logged_in(csrf_client)
+    page = csrf_client.get("/widgets").data  # nav renders the logout form
+    resp = csrf_client.post("/auth/logout", data={"csrf_token": _token_from(page)})
+    assert resp.status_code == 302
+    assert not _logged_in(csrf_client)

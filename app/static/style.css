@@ -45,6 +45,12 @@ nav .spacer { flex: 1; }
 nav a { color: var(--accent); text-decoration: none; }
 nav a:hover { text-decoration: underline; }
 nav .user { color: var(--muted); font-size: 0.9rem; }
+/* Log out is a POST form; make its button look like the other nav links. */
+nav form.logout { display: inline; margin: 0; }
+nav form.logout button {
+  font: inherit; border: 0; cursor: pointer; text-decoration: none;
+}
+nav form.logout button:hover { text-decoration: underline; }
 
 main {
   max-width: 880px;
