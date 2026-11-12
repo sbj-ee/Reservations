@@ -46,3 +46,47 @@ def parse_dt(value):
     if dt.tzinfo is not None:
         dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
     return dt.strftime(DT_FORMAT)
+
+
+def system_timezone_name():
+    """Best-effort IANA name of the server's own time zone (e.g. 'America/Chicago'),
+    used when APP_TIMEZONE isn't set. Falls back to 'UTC'."""
+    import os
+
+    tz = os.environ.get("TZ", "").lstrip(":")
+    if tz and "/" in tz:
+        return tz
+    try:
+        with open("/etc/timezone") as f:
+            name = f.read().strip()
+            if name:
+                return name
+    except OSError:
+        pass
+    try:
+        target = os.path.realpath("/etc/localtime")
+        if "/zoneinfo/" in target:
+            return target.split("/zoneinfo/", 1)[1]
+    except OSError:
+        pass
+    return "UTC"
+
+
+def _fmt_12h(dt):
+    return f"{(dt.hour % 12) or 12}:{dt.minute:02d} {'AM' if dt.hour < 12 else 'PM'}"
+
+
+def format_utc_range(start, end, tz):
+    """Format stored UTC 'YYYY-MM-DD HH:MM' start/end for people, in zone ``tz``
+    (a ZoneInfo), naming the zone, e.g.
+    'Sat, Nov 14, 2026, 10:30 AM – 12:00 PM CST' (same day) or
+    'Sat, Nov 14, 2026, 10:30 PM CST – Sun, Nov 15, 2026, 1:00 AM CST'."""
+    a = datetime.strptime(start, DT_FORMAT).replace(tzinfo=timezone.utc).astimezone(tz)
+    b = datetime.strptime(end, DT_FORMAT).replace(tzinfo=timezone.utc).astimezone(tz)
+
+    def day(d):
+        return f"{d:%a}, {d:%b} {d.day}, {d.year}"
+
+    if a.date() == b.date() and a.tzname() == b.tzname():
+        return f"{day(a)}, {_fmt_12h(a)} – {_fmt_12h(b)} {b.tzname()}"
+    return f"{day(a)}, {_fmt_12h(a)} {a.tzname()} – {day(b)}, {_fmt_12h(b)} {b.tzname()}"

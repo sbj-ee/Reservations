@@ -8,9 +8,10 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from . import models
+from . import models, throttle
 from .db import get_db
 from .notifications import notify_password_reset
+from .security import password_problem
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -55,6 +56,24 @@ def _authenticate(username, password):
     return None
 
 
+def check_login(username, password):
+    """Authenticate with failed-attempt throttling (see throttle.py).
+
+    Returns ``(user, retry_after)``: the user row (or None), and the number of
+    seconds the caller must wait when throttled (0 otherwise). A throttled attempt
+    doesn't check the password at all, so it reveals nothing.
+    """
+    wait = throttle.retry_after(username)
+    if wait:
+        return None, wait
+    user = _authenticate(username, password)
+    if user is None:
+        throttle.record_failure(username)
+    else:
+        throttle.record_success(username)
+    return user, 0
+
+
 def login_required(view):
     """For HTML views: redirect to the login page when not authenticated."""
 
@@ -92,7 +111,12 @@ def api_auth_required(view):
         if g.user is None:
             auth = request.authorization
             if auth and auth.type == "basic":
-                user = _authenticate(auth.username, auth.password)
+                user, wait = check_login(auth.username, auth.password)
+                if wait:
+                    resp = jsonify(error="too many failed login attempts; try again later")
+                    resp.status_code = 429
+                    resp.headers["Retry-After"] = str(wait)
+                    return resp
                 if user is not None:
                     g.user = user
         if g.user is None:
@@ -117,8 +141,8 @@ def register():
         error = None
         if not username:
             error = "Username is required."
-        elif not password:
-            error = "Password is required."
+        else:
+            error = password_problem(password)
 
         if error is None:
             try:
@@ -143,7 +167,13 @@ def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
-        user = _authenticate(username, password)
+        user, wait = check_login(username, password)
+        if wait:
+            flash(
+                "Too many failed sign-in attempts. "
+                f"Try again in {throttle.minutes(wait)}."
+            )
+            return render_template("auth/login.html"), 429
         if user is None:
             flash("Incorrect username or password.")
         else:
@@ -160,10 +190,16 @@ def login():
     return render_template("auth/login.html")
 
 
-@bp.route("/logout")
+@bp.route("/logout", methods=("GET", "POST"))
 def logout():
-    session.clear()
-    return redirect(url_for("web.list_widgets"))
+    # Logging out changes state, so it's a CSRF-protected POST (the nav has a small
+    # form). A plain GET (old bookmark, or a link on another site) only asks.
+    if request.method == "POST":
+        session.clear()
+        return redirect(url_for("web.list_widgets"))
+    if g.user is None:
+        return redirect(url_for("web.list_widgets"))
+    return render_template("auth/logout.html")
 
 
 @bp.route("/forgot", methods=("GET", "POST"))
@@ -192,8 +228,9 @@ def reset_password(token):
     if request.method == "POST":
         new = request.form.get("new_password") or ""
         confirm = request.form.get("confirm_password") or ""
-        if not new:
-            flash("New password is required.")
+        problem = password_problem(new)
+        if problem:
+            flash(problem)
         elif new != confirm:
             flash("New passwords do not match.")
         else:

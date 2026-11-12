@@ -38,7 +38,16 @@ class CSRFClient(FlaskClient):
 def app():
     db_fd, db_path = tempfile.mkstemp(suffix=".sqlite")
     app = create_app(
-        {"TESTING": True, "DATABASE": db_path, "SECRET_KEY": "test"}
+        {
+            "TESTING": True,
+            "DATABASE": db_path,
+            "SECRET_KEY": "test",
+            # Most tests use short throwaway passwords; the password policy itself
+            # is tested in test_auth_hardening.py with the real default.
+            "MIN_PASSWORD_LENGTH": 1,
+            # Deterministic notification text regardless of the machine's zone.
+            "APP_TIMEZONE": "UTC",
+        }
     )
     app.test_client_class = CSRFClient
     yield app
@@ -69,7 +78,7 @@ class AuthActions:
         )
 
     def logout(self):
-        return self._client.get("/auth/logout")
+        return self._client.post("/auth/logout")
 
 
 @pytest.fixture
