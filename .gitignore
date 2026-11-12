@@ -6,3 +6,6 @@ instance/
 *.sqlite
 *.sqlite3
 .env
+# Runtime artifacts from running gunicorn by hand (the systemd service logs to the journal)
+*.log
+*.pid
