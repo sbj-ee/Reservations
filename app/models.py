@@ -1,6 +1,6 @@
 from werkzeug.security import generate_password_hash
 
-from .db import get_db
+from .db import get_db, write_transaction
 from .utils import parse_dt
 
 
@@ -106,16 +106,16 @@ def create_reservation(widget_id, user_id, start_time, end_time, note=""):
     if end <= start:
         raise ValueError("end time must be after start time")
 
-    db = get_db()
-    if _has_overlap(db, widget_id, start, end):
-        raise OverlapError("widget is already reserved for that time range")
-
-    cur = db.execute(
-        """INSERT INTO reservation (widget_id, user_id, start_time, end_time, note)
-           VALUES (?, ?, ?, ?, ?)""",
-        (widget_id, user_id, start, end, (note or "").strip()),
-    )
-    db.commit()
+    # Check and insert under one write lock so a concurrent request can't book
+    # the same slot in between.
+    with write_transaction() as db:
+        if _has_overlap(db, widget_id, start, end):
+            raise OverlapError("widget is already reserved for that time range")
+        cur = db.execute(
+            """INSERT INTO reservation (widget_id, user_id, start_time, end_time, note)
+               VALUES (?, ?, ?, ?, ?)""",
+            (widget_id, user_id, start, end, (note or "").strip()),
+        )
     return cur.lastrowid
 
 
@@ -133,15 +133,15 @@ def update_reservation(reservation_id, start_time, end_time, note=""):
     if end <= start:
         raise ValueError("end time must be after start time")
 
-    db = get_db()
-    if _has_overlap(db, reservation["widget_id"], start, end, exclude_id=reservation_id):
-        raise OverlapError("widget is already reserved for that time range")
-
-    db.execute(
-        "UPDATE reservation SET start_time = ?, end_time = ?, note = ? WHERE id = ?",
-        (start, end, (note or "").strip(), reservation_id),
-    )
-    db.commit()
+    with write_transaction() as db:
+        if _has_overlap(
+            db, reservation["widget_id"], start, end, exclude_id=reservation_id
+        ):
+            raise OverlapError("widget is already reserved for that time range")
+        db.execute(
+            "UPDATE reservation SET start_time = ?, end_time = ?, note = ? WHERE id = ?",
+            (start, end, (note or "").strip(), reservation_id),
+        )
 
 
 def delete_reservation(reservation_id):

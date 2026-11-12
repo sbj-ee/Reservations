@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 
 import click
 from flask import current_app, g
@@ -15,6 +16,25 @@ def get_db():
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
     return g.db
+
+
+@contextmanager
+def write_transaction():
+    """Run a read-check-write sequence atomically across processes.
+
+    ``BEGIN IMMEDIATE`` takes SQLite's write lock up front, so no other
+    connection (e.g. another gunicorn worker) can write between our reads and
+    our writes. Commits on success, rolls back on any exception.
+    """
+    db = get_db()
+    db.execute("BEGIN IMMEDIATE")
+    try:
+        yield db
+    except BaseException:
+        db.rollback()
+        raise
+    else:
+        db.commit()
 
 
 def close_db(e=None):
