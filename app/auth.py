@@ -2,6 +2,7 @@ import functools
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 from flask import (
     Blueprint, abort, flash, g, redirect, render_template, request, session, url_for, jsonify
@@ -24,6 +25,26 @@ def _hash_token(token):
 
 def _utc_now_str():
     return datetime.now(timezone.utc).strftime(_RESET_TS_FORMAT)
+
+
+def safe_next_url(target):
+    """Return ``target`` if it is a same-site path, else None.
+
+    Rejects anything a browser could resolve to another host: absolute URLs,
+    scheme-relative ``//host``, ``/\\host`` (browsers treat ``\\`` as ``/``), and
+    control characters (browsers strip tabs/newlines, so ``/\\t/host`` becomes
+    ``//host``).
+    """
+    if not target or not target.startswith("/"):
+        return None
+    if "\\" in target or any(ord(c) < 0x20 or ord(c) == 0x7F for c in target):
+        return None
+    if target.startswith("//"):
+        return None
+    parts = urlsplit(target)
+    if parts.scheme or parts.netloc:
+        return None
+    return target
 
 
 @bp.app_context_processor
@@ -153,8 +174,10 @@ def login():
             session["user_id"] = user["id"]
             if previous_login:
                 session["last_login_notice"] = previous_login
-            next_url = request.form.get("next") or request.args.get("next")
-            if next_url and next_url.startswith("/"):
+            next_url = safe_next_url(
+                request.form.get("next") or request.args.get("next")
+            )
+            if next_url:
                 return redirect(next_url)
             return redirect(url_for("web.list_widgets"))
     return render_template("auth/login.html")
