@@ -9,6 +9,7 @@
   <p class="muted">Times are in your local time zone<span class="js-tz-name"></span>.</p>
   <form method="post" class="card js-reserve-form" data-booked='{{ booked|tojson }}'
         data-start="{{ reservation['start_time'] }}" data-end="{{ reservation['end_time'] }}">
+    {{ csrf_field() }}
     {% include "reservations/_time_fields.html" %}
     <label>Note (optional)
       <input name="note" value="{{ reservation['note'] }}">

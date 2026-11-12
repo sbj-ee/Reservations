@@ -37,6 +37,7 @@
     <p class="muted">Times are in your local time zone<span class="js-tz-name"></span>. Days with existing bookings are marked with a dot.</p>
     <form method="post" action="{{ url_for('web.reserve_widget', widget_id=widget['id']) }}"
           class="card js-reserve-form" data-booked='{{ booked|tojson }}'>
+      {{ csrf_field() }}
       {% include "reservations/_time_fields.html" %}
       <label>Note (optional)
         <input name="note">

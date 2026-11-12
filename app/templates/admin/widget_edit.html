@@ -4,6 +4,7 @@
   <p><a href="{{ url_for('admin.widgets') }}">&larr; Widgets</a></p>
   <h1>Edit widget</h1>
   <form method="post" class="card">
+    {{ csrf_field() }}
     <label>Name
       <input name="name" value="{{ widget['name'] }}" required autofocus>
     </label>

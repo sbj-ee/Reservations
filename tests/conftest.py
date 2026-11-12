@@ -1,11 +1,37 @@
 import base64
 import os
+import secrets
 import tempfile
 
 import pytest
+from flask.testing import FlaskClient
 
 from app import create_app
 from app.db import get_db
+from app.security import CSRF_FIELD, SESSION_KEY as SESSION_CSRF_KEY
+
+
+class CSRFClient(FlaskClient):
+    """Test client that adds the session's CSRF token to form POSTs, like a real
+    browser submitting a rendered form. Pass ``csrf=False`` to send a POST without
+    it (to test rejection)."""
+
+    def csrf_token(self):
+        with self.session_transaction() as sess:
+            token = sess.get(SESSION_CSRF_KEY)
+            if not token:
+                token = sess[SESSION_CSRF_KEY] = secrets.token_urlsafe(32)
+        return token
+
+    def post(self, path, *args, csrf=True, **kwargs):
+        data = kwargs.get("data")
+        if csrf and "json" not in kwargs and not path.startswith("/api/") and (
+            data is None or isinstance(data, dict)
+        ):
+            data = dict(data or {})
+            data.setdefault(CSRF_FIELD, self.csrf_token())
+            kwargs["data"] = data
+        return super().post(path, *args, **kwargs)
 
 
 @pytest.fixture
@@ -14,6 +40,7 @@ def app():
     app = create_app(
         {"TESTING": True, "DATABASE": db_path, "SECRET_KEY": "test"}
     )
+    app.test_client_class = CSRFClient
     yield app
     os.close(db_fd)
     os.unlink(db_path)

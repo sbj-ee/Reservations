@@ -50,11 +50,21 @@ flask --app app init-db
 Production-style, with gunicorn (the WSGI entrypoint is `wsgi:app`):
 
 ```bash
-SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" \
-  gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
+gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
 ```
 
 Then open http://127.0.0.1:8000/.
+
+**Secret key:** sessions are signed with `SECRET_KEY`. If the environment variable is set,
+it's used; otherwise a random key is generated on first start and saved to
+`instance/secret_key` (owner-only permissions, gitignored), so sessions survive restarts.
+There is no built-in default key. To rotate it (logging everyone out), delete that file or
+change the variable.
+
+**Security notes:** every server-rendered form carries a per-session CSRF token, and form
+POSTs without a valid one are rejected with `400`. The session cookie is `HttpOnly` and
+`SameSite=Lax`. JSON API `POST`s must send `Content-Type: application/json` (other bodies
+get `415`); API clients don't need a CSRF token.
 
 For local development with auto-reload you can instead use Flask's server:
 
