@@ -251,3 +251,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
   border-radius: 50%;
   background: #d97706;
 }
+
+/* Logout is a POST form in the nav; make it sit inline like the links. */
+nav .nav-form { display: inline; margin: 0; }
+nav .nav-form .link-button { text-decoration: none; font-size: inherit; }
+nav .nav-form .link-button:hover { text-decoration: underline; filter: none; }

@@ -10,7 +10,7 @@ import hmac
 import os
 import secrets
 
-from flask import abort, request, session
+from flask import abort, current_app, request, session
 from markupsafe import Markup, escape
 
 CSRF_FIELD = "csrf_token"
@@ -18,6 +18,28 @@ CSRF_HEADER = "X-CSRF-Token"
 SESSION_KEY = "_csrf_token"
 _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _API_BLUEPRINT = "api"
+
+DEFAULT_MIN_PASSWORD_LENGTH = 8
+# Upper bound so a huge "password" can't tie up a worker in the hash function.
+MAX_PASSWORD_LENGTH = 1024
+
+
+def password_problem(password, min_length=None):
+    """Why ``password`` is unacceptable as a new password, or None if it's fine.
+
+    Applies wherever a password is set (register, reset, account change, admin
+    reset, CLI). Existing passwords aren't re-checked at login.
+    """
+    if min_length is None:
+        min_length = current_app.config.get(
+            "MIN_PASSWORD_LENGTH", DEFAULT_MIN_PASSWORD_LENGTH
+        )
+    password = password or ""
+    if len(password) < min_length:
+        return f"Password must be at least {min_length} characters."
+    if len(password) > MAX_PASSWORD_LENGTH:
+        return f"Password must be at most {MAX_PASSWORD_LENGTH} characters."
+    return None
 
 
 def csrf_token():

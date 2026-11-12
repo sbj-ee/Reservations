@@ -112,6 +112,16 @@ def _migrate(db):
     db.execute(
         "CREATE INDEX IF NOT EXISTS idx_password_reset_token ON password_reset (token_hash)"
     )
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS login_failure (
+               id INTEGER PRIMARY KEY AUTOINCREMENT,
+               key TEXT NOT NULL,
+               created_at TEXT NOT NULL
+             )"""
+    )
+    db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_login_failure_key ON login_failure (key, created_at)"
+    )
     db.commit()
 
 
@@ -129,6 +139,11 @@ def init_db_command():
 @with_appcontext
 def create_admin_command(username, password):
     """Create a new user with admin privileges."""
+    from .security import password_problem
+
+    problem = password_problem(password)
+    if problem:
+        raise click.BadParameter(problem, param_hint="PASSWORD")
     db = get_db()
     try:
         db.execute(

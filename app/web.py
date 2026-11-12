@@ -3,9 +3,10 @@ from flask import (
 )
 from werkzeug.security import check_password_hash
 
-from . import models
+from . import models, throttle
 from .auth import login_required
 from .notifications import notify_reservation_event
+from .security import password_problem
 
 bp = Blueprint("web", __name__)
 
@@ -104,10 +105,17 @@ def account():
             current = request.form.get("current_password") or ""
             new = request.form.get("new_password") or ""
             confirm = request.form.get("confirm_password") or ""
-            if not check_password_hash(g.user["password_hash"], current):
+            # The current-password check is throttled like a login, so a hijacked
+            # session can't be used to guess the password.
+            wait = throttle.retry_after(g.user["username"])
+            problem = password_problem(new)
+            if wait:
+                flash(f"Too many incorrect attempts. Try again in {throttle.minutes(wait)}.")
+            elif not check_password_hash(g.user["password_hash"], current):
+                throttle.record_failure(g.user["username"])
                 flash("Current password is incorrect.")
-            elif not new:
-                flash("New password is required.")
+            elif problem:
+                flash(problem)
             elif new != confirm:
                 flash("New passwords do not match.")
             else:

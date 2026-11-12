@@ -1,6 +1,9 @@
 import os
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import Flask, redirect, url_for
+
+from .utils import system_timezone_name
 
 
 def create_app(test_config=None):
@@ -9,6 +12,10 @@ def create_app(test_config=None):
         # Unset -> a random key persisted in the instance folder (see security.py),
         # never a guessable default.
         SECRET_KEY=os.environ.get("SECRET_KEY"),
+        MIN_PASSWORD_LENGTH=int(os.environ.get("MIN_PASSWORD_LENGTH", "8")),
+        # Time zone for times shown server-side (email/SMS). Times are stored in UTC;
+        # web pages convert to each viewer's own zone in the browser.
+        APP_TIMEZONE=os.environ.get("APP_TIMEZONE") or system_timezone_name(),
         DATABASE=os.path.join(app.instance_path, "reservations.sqlite"),
         # Email (SMTP) notification settings — optional; logged when unset.
         MAIL_SERVER=os.environ.get("MAIL_SERVER"),
@@ -28,6 +35,14 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     os.makedirs(app.instance_path, exist_ok=True)
+
+    try:
+        app.config["APP_TZINFO"] = ZoneInfo(app.config["APP_TIMEZONE"])
+    except (ZoneInfoNotFoundError, ValueError) as e:
+        raise RuntimeError(
+            f"APP_TIMEZONE={app.config['APP_TIMEZONE']!r} is not a known time zone "
+            "(use an IANA name such as 'America/Chicago')"
+        ) from e
 
     from . import db, auth, web, api, admin, security
 

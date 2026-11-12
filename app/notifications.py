@@ -26,6 +26,7 @@ from email.message import EmailMessage
 from flask import current_app
 
 from . import models
+from .utils import format_utc_range
 
 EVENT_VERB = {
     "created": "created",
@@ -46,6 +47,13 @@ def sms_configured():
     )
 
 
+def _when(snapshot):
+    """Reservation time range in the app's time zone (APP_TIMEZONE), not raw UTC."""
+    return format_utc_range(
+        snapshot["start_time"], snapshot["end_time"], current_app.config["APP_TZINFO"]
+    )
+
+
 def _build_message(event, snapshot):
     verb = EVENT_VERB.get(event, event)
     subject = f"Reservation {verb}: {snapshot['widget_name']}"
@@ -53,7 +61,7 @@ def _build_message(event, snapshot):
         f"Hi {snapshot['username']},",
         "",
         f"Your reservation for \"{snapshot['widget_name']}\" was {verb}.",
-        f"  When: {snapshot['start_time']} to {snapshot['end_time']}",
+        f"  When: {_when(snapshot)}",
     ]
     if snapshot["note"]:
         lines.append(f"  Note: {snapshot['note']}")

@@ -64,7 +64,16 @@ CREATE TABLE password_reset (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Failed password attempts, for login throttling (see throttle.py). Rows are keyed
+-- by account+IP, IP, and account, and pruned once they age out of the window.
+CREATE TABLE login_failure (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX idx_reservation_widget ON reservation (widget_id, start_time, end_time);
 CREATE INDEX idx_reservation_user ON reservation (user_id);
 CREATE INDEX idx_notification_created ON notification (id DESC);
 CREATE INDEX idx_password_reset_token ON password_reset (token_hash);
+CREATE INDEX idx_login_failure_key ON login_failure (key, created_at);

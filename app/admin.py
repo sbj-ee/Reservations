@@ -8,6 +8,7 @@ from flask import (
 from . import models
 from .auth import admin_required
 from .notifications import notify_reservation_event
+from .security import password_problem
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -34,13 +35,17 @@ def edit_user(user_id):
         abort(404)
     if request.method == "POST":
         try:
+            new_password = (request.form.get("new_password") or "").strip()
+            # Validate before saving anything, so a bad password doesn't leave the
+            # other fields half-applied.
+            if new_password and (problem := password_problem(new_password)):
+                raise ValueError(problem)
             models.update_user_account(
                 user_id,
                 request.form.get("username"),
                 request.form.get("email"),
                 request.form.get("phone"),
             )
-            new_password = (request.form.get("new_password") or "").strip()
             if new_password:
                 models.set_password(user_id, new_password)
             flash("User updated.")
