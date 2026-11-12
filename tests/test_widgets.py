@@ -40,3 +40,17 @@ def test_api_create_widget_rejects_blank_name(client, auth):
     auth.register()
     resp = client.post("/api/widgets", json={"name": "  "})
     assert resp.status_code == 400
+
+
+def test_header_shows_version_and_build(app, client):
+    from app import __version__
+    app.jinja_env.globals["app_build"] = "abc1234"
+    html = client.get("/widgets").get_data(as_text=True)
+    assert f"v{__version__} · abc1234" in html
+
+
+def test_header_version_without_build(app, client):
+    from app import __version__
+    app.jinja_env.globals["app_build"] = None
+    html = client.get("/widgets").get_data(as_text=True)
+    assert f">v{__version__}</span>" in html

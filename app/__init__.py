@@ -1,9 +1,30 @@
 import os
+import subprocess
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import Flask, redirect, url_for
 
 from .utils import system_timezone_name
+
+# Bump on each release (semantic versioning). Shown in the header next to the
+# git commit, so it's always clear exactly which code is being served.
+__version__ = "1.0.0"
+
+
+def _git_commit():
+    """Short commit hash of the running code: APP_BUILD env if set (for deploys
+    without a .git directory), else asked from git, else None."""
+    if os.environ.get("APP_BUILD"):
+        return os.environ["APP_BUILD"]
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            capture_output=True, text=True, timeout=2, check=True,
+        )
+        return out.stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 
 def create_app(test_config=None):
@@ -31,6 +52,9 @@ def create_app(test_config=None):
         TWILIO_FROM=os.environ.get("TWILIO_FROM"),
     )
 
+    app.config["APP_VERSION"] = __version__
+    app.config["APP_BUILD"] = _git_commit()
+
     if test_config is not None:
         app.config.update(test_config)
 
@@ -47,6 +71,8 @@ def create_app(test_config=None):
     from . import db, auth, web, api, admin, security
 
     security.init_app(app)
+    app.jinja_env.globals["app_version"] = app.config["APP_VERSION"]
+    app.jinja_env.globals["app_build"] = app.config["APP_BUILD"]
     db.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(web.bp)
