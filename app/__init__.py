@@ -7,6 +7,8 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-change-me"),
+        # Require a per-session token on state-changing HTML form posts.
+        CSRF_ENABLED=True,
         DATABASE=os.path.join(app.instance_path, "reservations.sqlite"),
         # Email (SMTP) notification settings — optional; logged when unset.
         MAIL_SERVER=os.environ.get("MAIL_SERVER"),

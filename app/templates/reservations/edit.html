@@ -5,6 +5,7 @@
   <h1>Edit reservation</h1>
   <p class="muted">Times are shown in your local time zone and stored in UTC.</p>
   <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Start
       <input type="datetime-local" name="start_time" class="js-local-dt js-utc-input"
              value="{{ reservation['start_time'].replace(' ', 'T') }}" required>

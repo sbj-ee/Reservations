@@ -33,6 +33,7 @@
     <h2>Reserve this widget</h2>
     <p class="muted">Enter times in your local time zone — they're stored and compared in UTC.</p>
     <form method="post" action="{{ url_for('web.reserve_widget', widget_id=widget['id']) }}" class="card">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Start
         <input type="datetime-local" name="start_time" class="js-local-dt" required>
       </label>

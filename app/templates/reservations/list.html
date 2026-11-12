@@ -17,6 +17,7 @@
               <a href="{{ url_for('web.edit_reservation', reservation_id=r['id']) }}">Edit</a>
               <form method="post" action="{{ url_for('web.cancel_reservation', reservation_id=r['id']) }}"
                     onsubmit="return confirm('Cancel this reservation?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="link-button danger">Cancel</button>
               </form>
             </td>

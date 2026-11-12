@@ -3,6 +3,7 @@
 {% block content %}
   <h1>Choose a new password</h1>
   <form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>New password
       <input type="password" name="new_password" autocomplete="new-password" required autofocus>
     </label>

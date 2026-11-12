@@ -1,11 +1,13 @@
 import functools
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 from flask import (
-    Blueprint, abort, flash, g, redirect, render_template, request, session, url_for, jsonify
+    Blueprint, abort, current_app, flash, g, redirect, render_template, request,
+    session, url_for, jsonify
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -45,6 +47,43 @@ def safe_next_url(target):
     if parts.scheme or parts.netloc:
         return None
     return target
+
+
+# --- CSRF protection --------------------------------------------------------
+# Every state-changing request to the HTML side must carry the per-session
+# token, either as a ``csrf_token`` form field or an ``X-CSRF-Token`` header.
+# The JSON API is exempt: it only reads JSON bodies (request.get_json without
+# force), which a cross-site HTML form cannot produce, and its PUT/DELETE
+# methods require a CORS preflight that this app never grants.
+
+CSRF_SESSION_KEY = "_csrf_token"
+_CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
+
+
+def csrf_token():
+    token = session.get(CSRF_SESSION_KEY)
+    if token is None:
+        token = secrets.token_urlsafe(32)
+        session[CSRF_SESSION_KEY] = token
+    return token
+
+
+@bp.app_context_processor
+def inject_csrf_token():
+    return {"csrf_token": csrf_token}
+
+
+@bp.before_app_request
+def check_csrf():
+    if not current_app.config.get("CSRF_ENABLED", True):
+        return
+    if request.method in _CSRF_SAFE_METHODS or request.blueprint == "api":
+        return
+    expected = session.get(CSRF_SESSION_KEY)
+    submitted = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
+    if not expected or not submitted or not hmac.compare_digest(expected, submitted):
+        abort(400, description="The form expired or was not submitted from this site. "
+                               "Please go back, reload the page and try again.")
 
 
 @bp.app_context_processor
