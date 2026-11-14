@@ -1,4 +1,6 @@
 import os
+
+import pytest
 import re
 import stat
 
@@ -138,3 +140,50 @@ def test_explicit_secret_key_is_kept(tmp_path):
     security.init_app(app)
     assert app.config["SECRET_KEY"] == "from-env"
     assert not (tmp_path / "secret_key").exists()
+
+# --- Open redirect after login ---------------------------------------------
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "http://evil.example.com/",
+        "https://evil.example.com/",
+        "//evil.example.com",
+        "///evil.example.com/",
+        "/\\evil.example.com/",
+        "/\t/evil.example.com/",
+        "javascript:alert(1)",
+        "evil.example.com",
+    ],
+)
+def test_login_rejects_offsite_next(client, auth, target):
+    auth.register()
+    auth.logout()
+    resp = client.post(
+        "/auth/login",
+        data={"username": "alice", "password": "secret", "next": target},
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/widgets"
+
+
+def test_login_follows_local_next(client, auth):
+    auth.register()
+    auth.logout()
+    resp = client.post(
+        "/auth/login",
+        data={"username": "alice", "password": "secret", "next": "/reservations?x=1"},
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/reservations?x=1"
+
+
+def test_login_without_next_goes_to_default(client, auth):
+    auth.register()
+    auth.logout()
+    resp = client.post(
+        "/auth/login",
+        data={"username": "alice", "password": "secret"},
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/widgets"
